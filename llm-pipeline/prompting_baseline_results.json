@@ -1,0 +1,242 @@
+{
+  "zero_shot": {
+    "total_samples": 5,
+    "valid_json_count": 5,
+    "validity_rate": 100.0,
+    "avg_latency_sec": 2.993,
+    "runs": [
+      {
+        "raw_output": "{\n  \"hype_score\": 9.5,\n  \"story_score\": 8.5,\n  \"nostalgia_score\": 7.5\n}",
+        "parsed": {
+          "hype_score": 9.5,
+          "story_score": 8.5,
+          "nostalgia_score": 7.5
+        },
+        "is_valid": true,
+        "scores": {
+          "hype_score": 9.5,
+          "story_score": 8.5,
+          "nostalgia_score": 7.5
+        },
+        "latency": 3.814084529876709,
+        "game": "Counter-Strike"
+      },
+      {
+        "raw_output": "{\n  \"hype_score\": 9.5,\n  \"story_score\": 8.5,\n  \"nostalgia_score\": 7.5\n}",
+        "parsed": {
+          "hype_score": 9.5,
+          "story_score": 8.5,
+          "nostalgia_score": 7.5
+        },
+        "is_valid": true,
+        "scores": {
+          "hype_score": 9.5,
+          "story_score": 8.5,
+          "nostalgia_score": 7.5
+        },
+        "latency": 2.841817855834961,
+        "game": "Portal"
+      },
+      {
+        "raw_output": "{\n  \"hype_score\": 9.5,\n  \"story_score\": 8.5,\n  \"nostalgia_score\": 7.5\n}",
+        "parsed": {
+          "hype_score": 9.5,
+          "story_score": 8.5,
+          "nostalgia_score": 7.5
+        },
+        "is_valid": true,
+        "scores": {
+          "hype_score": 9.5,
+          "story_score": 8.5,
+          "nostalgia_score": 7.5
+        },
+        "latency": 2.794043779373169,
+        "game": "Dota 2"
+      },
+      {
+        "raw_output": "{\n  \"hype_score\": 9.5,\n  \"story_score\": 8.5,\n  \"nostalgia_score\": 7.5\n}",
+        "parsed": {
+          "hype_score": 9.5,
+          "story_score": 8.5,
+          "nostalgia_score": 7.5
+        },
+        "is_valid": true,
+        "scores": {
+          "hype_score": 9.5,
+          "story_score": 8.5,
+          "nostalgia_score": 7.5
+        },
+        "latency": 2.7527027130126953,
+        "game": "Killing Floor"
+      },
+      {
+        "raw_output": "{\n  \"hype_score\": 9.5,\n  \"story_score\": 7.5,\n  \"nostalgia_score\": 6.5\n}",
+        "parsed": {
+          "hype_score": 9.5,
+          "story_score": 7.5,
+          "nostalgia_score": 6.5
+        },
+        "is_valid": true,
+        "scores": {
+          "hype_score": 9.5,
+          "story_score": 7.5,
+          "nostalgia_score": 6.5
+        },
+        "latency": 2.7622992992401123,
+        "game": "Darwinia"
+      }
+    ]
+  },
+  "few_shot": {
+    "total_samples": 5,
+    "valid_json_count": 5,
+    "validity_rate": 100.0,
+    "avg_latency_sec": 2.284,
+    "runs": [
+      {
+        "raw_output": "{\"hype_score\": 6.5, \"story_score\": 7.0, \"nostalgia_score\": 8.0}",
+        "parsed": {
+          "hype_score": 6.5,
+          "story_score": 7.0,
+          "nostalgia_score": 8.0
+        },
+        "is_valid": true,
+        "scores": {
+          "hype_score": 6.5,
+          "story_score": 7.0,
+          "nostalgia_score": 8.0
+        },
+        "latency": 2.296560049057007,
+        "game": "Counter-Strike"
+      },
+      {
+        "raw_output": "{\"hype_score\": 6.5, \"story_score\": 7.0, \"nostalgia_score\": 8.0}",
+        "parsed": {
+          "hype_score": 6.5,
+          "story_score": 7.0,
+          "nostalgia_score": 8.0
+        },
+        "is_valid": true,
+        "scores": {
+          "hype_score": 6.5,
+          "story_score": 7.0,
+          "nostalgia_score": 8.0
+        },
+        "latency": 2.13942813873291,
+        "game": "Portal"
+      },
+      {
+        "raw_output": "{\"hype_score\": 6.5, \"story_score\": 7.5, \"nostalgia_score\": 8.0}",
+        "parsed": {
+          "hype_score": 6.5,
+          "story_score": 7.5,
+          "nostalgia_score": 8.0
+        },
+        "is_valid": true,
+        "scores": {
+          "hype_score": 6.5,
+          "story_score": 7.5,
+          "nostalgia_score": 8.0
+        },
+        "latency": 2.2479796409606934,
+        "game": "Dota 2"
+      },
+      {
+        "raw_output": "{\"hype_score\": 7.0, \"story_score\": 7.5, \"nostalgia_score\": 8.0}",
+        "parsed": {
+          "hype_score": 7.0,
+          "story_score": 7.5,
+          "nostalgia_score": 8.0
+        },
+        "is_valid": true,
+        "scores": {
+          "hype_score": 7.0,
+          "story_score": 7.5,
+          "nostalgia_score": 8.0
+        },
+        "latency": 2.31362247467041,
+        "game": "Killing Floor"
+      },
+      {
+        "raw_output": "{\"hype_score\": 6.5, \"story_score\": 7.5, \"nostalgia_score\": 8.0}",
+        "parsed": {
+          "hype_score": 6.5,
+          "story_score": 7.5,
+          "nostalgia_score": 8.0
+        },
+        "is_valid": true,
+        "scores": {
+          "hype_score": 6.5,
+          "story_score": 7.5,
+          "nostalgia_score": 8.0
+        },
+        "latency": 2.4202144145965576,
+        "game": "Darwinia"
+      }
+    ]
+  },
+  "chain_of_thought": {
+    "total_samples": 5,
+    "valid_json_count": 2,
+    "validity_rate": 40.0,
+    "avg_latency_sec": 12.586,
+    "runs": [
+      {
+        "raw_output": "```json\n{\n  \"hype_score\": 0,\n  \"story_score\": 8,\n  \"nostalgia_score\": 7\n}\n```\n\n**Step-by-Step Reasoning:**\n\n1. **Story & Lore (Narrative Depth):**\n   - The game is designed around a highly immersive narrative that players can customize and adapt to their own personal storylines. This level of freedom allows for deep character development and emotional investment from players.\n   - The game's lore includes detailed information about the game's history, characters, and key moments, which adds to its replayability and provides a sense of continuity between different player experiences.\n\n2. **Community & Virality (Hype Potential):**\n   - The game has a large and active community, with numerous forums, social media channels, and dedicated servers where players share strategies, tips, and achievements.\n   - The game's popularity makes it easy for players to spread word of mouth, leading to viral content and increased",
+        "parsed": {
+          "hype_score": 0,
+          "story_score": 8,
+          "nostalgia_score": 7
+        },
+        "is_valid": true,
+        "scores": {
+          "hype_score": 0.0,
+          "story_score": 8.0,
+          "nostalgia_score": 7.0
+        },
+        "latency": 14.938110828399658,
+        "game": "Counter-Strike"
+      },
+      {
+        "raw_output": "Step 1: Story & Lore (Narrative Depth)\n- The game's narrative revolves around the protagonist, Dr. Elena Vespera, who discovers a portal to another dimension. As she navigates this portal, she uncovers secrets about her own past and the origins of the Aperture Science Laboratories. This story is complex and engaging, with elements that keep players invested throughout the game.\n\nFinal Score: 8/10\n\nStep 2: Community & Virality (Hype Potential)\n- Portal is known for its retro and heritage appeal, which makes it appealing to fans of classic gaming franchises like Space Invaders or Pac-Man. The game's retro aesthetic and nostalgic feel make it a hit among those who enjoy these genres. Additionally, the game's lore and characters have gained a cult following, making it a platform for community engagement and sharing.\n\nFinal Score: 9/10\n\nStep 3: Retro / Heritage (Nostalgia Appeal)\n- Portal is indeed",
+        "parsed": null,
+        "is_valid": false,
+        "scores": {},
+        "latency": 14.520541429519653,
+        "game": "Portal"
+      },
+      {
+        "raw_output": "```json\n{\n  \"hype_score\": 9.5,\n  \"story_score\": 8.5,\n  \"nostalgia_score\": 7.5\n}\n```",
+        "parsed": {
+          "hype_score": 9.5,
+          "story_score": 8.5,
+          "nostalgia_score": 7.5
+        },
+        "is_valid": true,
+        "scores": {
+          "hype_score": 9.5,
+          "story_score": 8.5,
+          "nostalgia_score": 7.5
+        },
+        "latency": 2.950015068054199,
+        "game": "Dota 2"
+      },
+      {
+        "raw_output": "Step 1: Story & Lore (Narrative Depth)\n- The story is centered around a group of survivors who must work together to survive a mysterious event that has left them stranded on a remote island. The narrative is rich with suspense, action, and exploration, providing a compelling backdrop for the game's core mechanics.\n- This aspect contributes significantly to the overall gaming experience, making it more engaging and immersive.\n\nStep 2: Community & Virality (Hype Potential)\n- The game features a large community of players who can share their experiences and tips, creating a sense of camaraderie and excitement among the players.\n- Additionally, the game offers retro elements such as classic games from the 80s and 90s, which can attract fans of those genres and create a nostalgic atmosphere.\n- These factors contribute to the game's viral potential by fostering a sense of community and encouraging others to play the game.\n\nStep 3: Retro / Heritage (Nostalgia Appeal)",
+        "parsed": null,
+        "is_valid": false,
+        "scores": {},
+        "latency": 14.936533451080322,
+        "game": "Killing Floor"
+      },
+      {
+        "raw_output": "Step 1: Story & Lore (Narrative Depth)\n- The game's narrative is centered around the protagonist, a young sprite named Darwin, who must navigate a complex world filled with both new and old challenges. The story follows Darwin as he learns to adapt to his surroundings and make decisions that affect the fate of his tribe. This narrative depth adds layers of complexity and intrigue to the gameplay experience.\n- The story is set against the backdrop of a futuristic world where traditional storytelling methods have been replaced by digital technology. This setting provides a unique perspective on the game's themes and allows for creative interpretation of the story.\n\nStep 2: Community & Virality (Hype Potential)\n- The game has a large and active community of players who share their experiences and strategies. This communal aspect makes it easy for fans to spread the word about the game and attract new players.\n- The game's graphical style is reminiscent of classic 80s games like Tron and Defender, which can be seen as",
+        "parsed": null,
+        "is_valid": false,
+        "scores": {},
+        "latency": 15.583897829055786,
+        "game": "Darwinia"
+      }
+    ]
+  }
+}

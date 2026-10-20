@@ -81,21 +81,21 @@ Please begin with Phase 1. Output the code, explain it briefly, and then output 
 
 #### Phase 1: Data Engineering & XGBoost Training (ml-pipeline)
 
-* [ ] Load the `steam.csv` dataset from the `raw_data/` folder in `data_prep.py`.
-* [ ] Clean dataset by removing duplicates, handling null values, and fixing formatting inconsistencies.
-* [ ] Engineer `approval_rate`: (Positive Ratings / Total Reviews).
-* [ ] Engineer `rating_text`: Translate the `approval_rate` into text classes matching Steam's format (e.g., Overwhelmingly Positive, Very Positive, Mostly Positive, Mixed, Mostly Negative), taking total reviews into account.
-* [ ] Engineer the target variable `is_hit`: 1 if `approval_rate` >= 0.80 and total reviews >= 50, else 0.
-* [ ] Drop data leakage columns (positive/negative ratings, total reviews, approval_rate).
-* [ ] Split the cleaned dataset into stratified train (80%), valid (10%), and test (10%) splits and save them as .csv files in `cleaned_data/`.
-* [ ] Apply Ordinal Encoding to the `genres` and `platforms` columns and persist the encoder for training and inference.
-* [ ] In `xgboost_train.py`, train an XGBoost Classifier using `cleaned_data/` for tabular classification with standard features (price, ordinal-encoded genres, ordinal-encoded platforms) alongside mock placeholders for LLM features (hype_score, story_score, nostalgia_score). Perform training with validation monitoring, compute holdout test accuracy/F1-score, and save the model as a `.pkl` file to `saved_models/ml_models/`.
+* [x] Load the `steam.csv` dataset from the `raw_data/` folder in `data_prep.py`.
+* [x] Clean dataset by removing duplicates, handling null values, and fixing formatting inconsistencies.
+* [x] Engineer `approval_rate`: (Positive Ratings / Total Reviews).
+* [x] Engineer `rating_text`: Translate the `approval_rate` into text classes matching Steam's format (e.g., Overwhelmingly Positive, Very Positive, Mostly Positive, Mixed, Mostly Negative), taking total reviews into account.
+* [x] Engineer the target variable `is_hit`: 1 if `approval_rate` >= 0.80 and total reviews >= 50, else 0.
+* [x] Drop data leakage columns (positive/negative ratings, total reviews, approval_rate).
+* [x] Split the cleaned dataset into stratified train (80%), valid (10%), and test (10%) splits and save them as .csv files in `cleaned_data/`.
+* [x] Apply Ordinal Encoding to the `genres` and `platforms` columns and persist the encoder for training and inference.
+* [x] In `xgboost_train.py`, train an XGBoost Classifier using `cleaned_data/` for tabular classification with standard features (price, ordinal-encoded genres, ordinal-encoded platforms) alongside mock placeholders for LLM features (hype_score, story_score, nostalgia_score). Perform training with validation monitoring, compute holdout test accuracy/F1-score, and save the model as a `.pkl` file to `saved_models/ml_models/`.
 
 #### Phase 2: LLM Baselines (llm-pipeline)
 
-* [ ] Write `inference_baseline.py` to establish a working inference baseline, running the chosen local model (e.g., Llama-3-8B or Mistral) end-to-end on our task to produce a first qualitative result.
+* [x] Write `inference_baseline.py` to establish a working inference baseline, running the chosen local model (e.g., Llama-3-8B or Mistral) end-to-end on our task to produce a first qualitative result.
 
-* [ ] Write `prompting_baseline.py` to establish a prompting baseline that records zero-shot, few-shot, and CoT results on the team's task against a small metric (e.g., parsing a valid JSON format for Hype, Story, and Nostalgia scores).
+* [x] Write `prompting_baseline.py` to establish a prompting baseline that records zero-shot, few-shot, and CoT results on the team's task against a small metric (e.g., parsing a valid JSON format for Hype, Story, and Nostalgia scores).
 
 #### Phase 3: LLM Fine-Tuning & Main Build (llm-pipeline)
 
