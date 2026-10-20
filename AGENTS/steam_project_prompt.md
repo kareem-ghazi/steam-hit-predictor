@@ -1,0 +1,128 @@
+# Steam Hit Predictor
+
+**Act as an expert Full-Stack Machine Learning Engineer.** Your goal is to guide me through building the "Steam Hit Predictor," a hybrid AI web application, step-by-step.
+
+## Core Project Requirements
+
+1. **Dataset:** We are using the Kaggle [Steam Store Games dataset](https://www.kaggle.com/datasets/nikdavis/steam-store-games).
+2. **Code Style:** Clean, simple, and stripped of unnecessary enterprise boilerplate, suitable for an undergraduate project.
+3. **Execution Rule:** This is a multi-phase project. You must strictly output the code and instructions for **ONE phase at a time**.
+4. **State Tracking:** You must maintain the checklist provided below. At the end of every response, you must print the full checklist, mark the completed tasks with an `[x]`, and ask for my confirmation before proceeding to the next unchecked task. Do not jump ahead. Before finishing a task, update PROJECT_STATE.md. Overwrite it with a brief summary of the completed components, any newly installed dependencies, the current data flow, and exactly what file we are supposed to work on next.
+
+### The Target State
+
+Here is the architecture and directory structure we are building towards.
+
+**Directory Structure:**
+
+```text
+steam-hit-predictor/
+├── raw_data/                    # Stores the original kaggle dataset
+│   └── steam.csv                
+├── cleaned_data/                # Cleaned & stratified dataset splits
+│   ├── train.csv                # 80% train split
+│   ├── valid.csv                # 10% validation split
+│   └── test.csv                 # 10% test split
+├── saved_models/                # Stores resulting model files
+│   ├── ml_models/               # XGBoost .pkl files
+│   └── llm_adapters/            # QLoRA weights
+├── llm-pipeline/                
+│   ├── inference_baseline.py 
+│   ├── prompting_baseline.py 
+│   └── qlora_training.py     
+├── ml-pipeline/                 
+│   ├── data_prep.py       
+│   └── xgboost_train.py      
+├── backend/                     
+│   ├── main.py                  
+│   └── requirements.txt         
+├── frontend/                    
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── DatasetExplorer.jsx
+│   │   │   └── PredictionStudio.jsx
+│   │   └── App.jsx              
+│   └── package.json
+├── docs/                        # Detailed component documentation
+│   ├── architecture.md
+│   ├── ml_pipeline.md
+│   ├── llm_pipeline.md
+│   ├── backend.md
+│   └── frontend.md
+└── tests/                       # Unit tests for frontend, backend, and ML
+    ├── test_backend.py
+    └── App.test.jsx
+
+```
+
+**System Architecture:**
+
+```mermaid
+graph TD
+    A[User] -->|Submits Game Concept| B(React Frontend)
+    B -->|POST JSON Request| C[Python FastAPI Backend]
+    
+    C -->|1. Sends Description| D[[Local LLM via QLoRA]]
+    D -->|2. Returns JSON Scores| C
+    
+    C -->|3. Merges Scores + Tabular Data| E[(XGBoost Classifier)]
+    E -->|4. Returns Hit/Flop| C
+    
+    C -->|5. Sends Final Result & Similar Games| B
+    B -->|Displays Dashboard| A
+
+```
+
+---
+
+### Task Execution Checklist
+
+Please begin with Phase 1. Output the code, explain it briefly, and then output this checklist with the first item marked `[x]`.
+
+#### Phase 1: Data Engineering & XGBoost Training (ml-pipeline)
+
+* [ ] Load the `steam.csv` dataset from the `raw_data/` folder in `data_prep.py`.
+* [ ] Clean dataset by removing duplicates, handling null values, and fixing formatting inconsistencies.
+* [ ] Engineer `approval_rate`: (Positive Ratings / Total Reviews).
+* [ ] Engineer `rating_text`: Translate the `approval_rate` into text classes matching Steam's format (e.g., Overwhelmingly Positive, Very Positive, Mostly Positive, Mixed, Mostly Negative), taking total reviews into account.
+* [ ] Engineer the target variable `is_hit`: 1 if `approval_rate` >= 0.80 and total reviews >= 50, else 0.
+* [ ] Drop data leakage columns (positive/negative ratings, total reviews, approval_rate).
+* [ ] Split the cleaned dataset into stratified train (80%), valid (10%), and test (10%) splits and save them as .csv files in `cleaned_data/`.
+* [ ] Apply Ordinal Encoding to the `genres` and `platforms` columns and persist the encoder for training and inference.
+* [ ] In `xgboost_train.py`, train an XGBoost Classifier using `cleaned_data/` for tabular classification with standard features (price, ordinal-encoded genres, ordinal-encoded platforms) alongside mock placeholders for LLM features (hype_score, story_score, nostalgia_score). Perform training with validation monitoring, compute holdout test accuracy/F1-score, and save the model as a `.pkl` file to `saved_models/ml_models/`.
+
+#### Phase 2: LLM Baselines (llm-pipeline)
+
+* [ ] Write `inference_baseline.py` to establish a working inference baseline, running the chosen local model (e.g., Llama-3-8B or Mistral) end-to-end on our task to produce a first qualitative result.
+
+* [ ] Write `prompting_baseline.py` to establish a prompting baseline that records zero-shot, few-shot, and CoT results on the team's task against a small metric (e.g., parsing a valid JSON format for Hype, Story, and Nostalgia scores).
+
+#### Phase 3: LLM Fine-Tuning & Main Build (llm-pipeline)
+
+* [ ] Write `qlora_training.py` to achieve a training/data milestone. This script must construct a training dataset converting Steam descriptions to the target JSON format, and feature a training loop running on the team's data with a relevant optimization applied (4-bit quantization via `bitsandbytes`). Provide specific details on configuring the `SFTTrainer` and LoRA hyperparameters (rank, alpha).
+
+* [ ] As part of the main build, ensure the script saves the fine-tuned component (a QLoRA adapter trained on the team's data) to `saved_models/llm_adapters/` and includes code to run a before/after comparison to evaluate the improvement.
+
+#### Phase 4: The FastAPI Backend (backend/)
+
+* [ ] Create `main.py` that loads `steam.csv` into memory and initializes both the XGBoost classifier and the QLoRA adapter.
+* [ ] Create a `/predict` endpoint that accepts new game data, processes the description through the local LLM pipeline to extract vibe scores, runs the XGBoost prediction, and returns the result.
+* [ ] Create a `/similar` endpoint that filters the loaded dataset to return 3 historical games matching the predicted game's genre, price bracket, and `rating_text`.
+
+#### Phase 5: The React Frontend Dashboard (frontend/)
+
+* [ ] Build a **Dataset Explorer** component to display the `steam.csv` data in a UI grid, highlighting the newly engineered `rating_text`.
+* [ ] Build a **Developer Studio** component to accept new game parameters.
+* [ ] Build a **Results Pane** to display the XGBoost Hit/Flop prediction, LLM vibe scores, and the 3 similar historical games pulled from the backend.
+
+#### Phase 6: Testing & Detailed Documentation (tests/ & docs/)
+
+* [ ] Write Pytest unit tests in `tests/test_backend.py` for the FastAPI endpoints and XGBoost inference pipeline logic.
+* [ ] Write frontend component tests using Jest / React Testing Library in `tests/App.test.jsx`.
+* [ ] Create a `README.md` at the root directory containing project setup and execution guides.
+* [ ] Create detailed Markdown documentation inside the `docs/` folder:
+  * `docs/architecture.md`: System design and data flow breakdown.
+  * `docs/ml_pipeline.md`: Feature engineering, target creation, and XGBoost training details.
+  * `docs/llm_pipeline.md`: Evaluation of baselines, QLoRA setup, and 4-bit quantization fine-tuning.
+  * `docs/backend.md`: FastAPI endpoints, payload schemas, and model loading.
+  * `docs/frontend.md`: Component layout, state management, and user interaction design.
