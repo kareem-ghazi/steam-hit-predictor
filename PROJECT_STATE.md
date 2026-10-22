@@ -4,25 +4,31 @@
 - **Phase 1: Data Engineering & Tabular ML:**
   - Configured project `.venv` using master Conda environment packages with `--system-site-packages`.
   - Cleaned tabular Steam store dataset (`raw_data/steam.csv`): deduplication, null imputation, non-negative numeric clamping.
-  - Cleaned and prepared Steam descriptions (`raw_data/steam_description_data.csv`): stripped HTML tags, unescaped HTML entities, normalized whitespace, and exported 27,334 records to `cleaned_data/steam_descriptions_cleaned.csv`.
-  - Merged cleaned descriptions with the tabular dataset and engineered target `is_hit` (`approval_rate >= 0.80` & `total_reviews >= 50`) and official Steam review tiers (`rating_text`).
-  - Added `english` language flag and cleaned `publisher` column.
-  - Stratified 80% / 10% / 10% train/valid/test split saved to `cleaned_data/train.csv` (21,660 rows), `cleaned_data/valid.csv` (2,707 rows), and `cleaned_data/test.csv` (2,708 rows).
+  - Cleaned and prepared Steam descriptions (`raw_data/steam_description_data.csv`): stripped HTML tags, unescaped HTML entities, normalized whitespace.
+  - **Embedded descriptions directly into splits**: `short_description`, `about_the_game`, `detailed_description`, and `clean_description` are now direct columns inside `cleaned_data/train.csv` (21,660 rows), `cleaned_data/valid.csv` (2,707 rows), and `cleaned_data/test.csv` (2,708 rows).
+  - **Organized column hierarchy with target at end**:
+    1. Identifiers & Metadata: `appid`, `name`, `release_date`, `english`, `developer`, `publisher`, `platforms`, `required_age`, `categories`, `genres`, `steamspy_tags`, `achievements`, `average_playtime`, `median_playtime`, `owners`, `price`
+    2. Steam Descriptions: `short_description`, `about_the_game`, `detailed_description`, `clean_description`
+    3. Ordinal Encoded Features: `genres_encoded`, `platforms_encoded`, `publisher_encoded`
+    4. LLM Vibe Scores: `hype_score`, `story_score`, `nostalgia_score`
+    5. Steam Rating Tier: `rating_text`
+    6. **Target Variable**: `is_hit` (**placed at the very end**)
   - Applied and saved `OrdinalEncoder` across `genres`, `platforms`, and `publisher` (`saved_models/ml_models/ordinal_encoder.pkl`).
   - Retrained `XGBClassifier` on 8 features (`price`, `english`, `genres_encoded`, `platforms_encoded`, `publisher_encoded`, `hype_score`, `story_score`, `nostalgia_score`) with validation tracking.
   - Achieved **94.28% Accuracy**, **82.44% Precision**, **90.79% Recall**, and **0.8642 F1-Score** on the holdout test set (`saved_models/ml_models/xgboost_hit_predictor.pkl`).
 - **Phase 2: LLM Baselines & Containerization:**
   - Created `.env` file for Hugging Face authentication (`HF_TOKEN`).
   - Implemented `llm-pipeline/inference_baseline.py` using **Qwen3.5-0.8B** on GPU (`cuda:0`):
-    - System prompt and JSON payload parser with markdown and trailing comma sanitization.
-    - Added real-time RAM & VRAM tracking after every generation (monitoring process RSS, system RAM used/total/%, and GPU allocated/reserved memory).
+    - System prompt and JSON payload parser with markdown, trailing comma, and regex fallback handling.
+    - Real-time RAM & VRAM tracking after every generation (process RSS, system RAM used/total/%, and GPU allocated/reserved memory).
+    - **Results Export**: Exports aggregate metrics and per-game runs to `llm-pipeline/inference_baseline_results.json` (100.0% validity rate, 5.328s avg latency, ~1.97 GB Process RAM, ~1.41 GB GPU VRAM).
   - Implemented `llm-pipeline/prompting_baseline.py`:
     - Benchmarked **Zero-Shot**, **Few-Shot**, and **Chain-of-Thought (CoT)** prompting strategies.
-    - Evaluated both **JSON Validity Rate** and **Accuracy Rate (MAE and % within ±2.0 of reference ground truth)**.
-    - Saved benchmark metrics to `llm-pipeline/prompting_baseline_results.json`:
-      - **Few-Shot:** 100.0% JSON validity, 75.0% accuracy, 1.38 MAE, 4.475s avg latency.
-      - **Zero-Shot:** 100.0% JSON validity, 66.7% accuracy, 1.62 MAE, 6.709s avg latency.
-      - **Chain-of-Thought:** 0.0% validity, excessive reasoning length causes format drift and token cutoff, providing empirical motivation for Phase 3 fine-tuning.
+    - **Resolved CoT Validity**: Restructured prompt with concise structured reasoning dimensions and token allocation, achieving **100.0% validity** across all three strategies:
+      - **Zero-Shot:** 100.0% validity, 75.0% accuracy (±2.0 tolerance), 1.58 MAE, 5.694s latency.
+      - **Few-Shot:** 100.0% validity, 75.0% accuracy (±2.0 tolerance), 1.67 MAE, 4.093s latency.
+      - **Chain-of-Thought:** 100.0% validity, 66.7% accuracy (±2.0 tolerance), 1.83 MAE, 13.735s latency.
+    - Saved benchmark metrics to `llm-pipeline/prompting_baseline_results.json`.
   - Created root [requirements.txt](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/requirements.txt) with pinned dependencies across data, ML, LLM, FastAPI, and test libraries.
   - Created root [Dockerfile](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/Dockerfile) containerizing the environment and FastAPI backend.
 
@@ -41,8 +47,8 @@
 raw_data/steam.csv ────────────────┐
 raw_data/steam_description_data.csv─┴─► [ml-pipeline/data_prep.py]
                                               │
-                                              ├─► cleaned_data/steam_descriptions_cleaned.csv
                                               ├─► cleaned_data/ (train.csv, valid.csv, test.csv)
+                                              │   (includes short, about, detailed, clean_description; target is_hit at end)
                                               ├─► saved_models/ml_models/ordinal_encoder.pkl
                                               │   (genres, platforms, publisher)
                                               ▼
@@ -54,10 +60,9 @@ raw_data/steam_description_data.csv─┴─► [ml-pipeline/data_prep.py]
                                               ▲
                                               │
                                       [llm-pipeline/inference_baseline.py]
+                                        -> llm-pipeline/inference_baseline_results.json (100% validity)
                                       [llm-pipeline/prompting_baseline.py]
-                                        - Powered by Qwen3.5-0.8B on CUDA
-                                        - Real-time RAM & VRAM tracking
-                                        - Accuracy & JSON validity metrics
+                                        -> llm-pipeline/prompting_baseline_results.json (100% validity)
 ```
 
 ## 4. Next Step

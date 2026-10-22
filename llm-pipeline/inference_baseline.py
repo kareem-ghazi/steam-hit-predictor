@@ -62,6 +62,20 @@ def extract_json_payload(raw_text: str) -> Optional[Dict[str, Any]]:
         if res:
             return res
 
+    # Fallback extraction: parse key-value pairs directly if JSON was truncated by token limit
+    hype_m = re.search(r'"?hype_score"?\s*:\s*([0-9]+(?:\.[0-9]+)?)', raw_text)
+    story_m = re.search(r'"?story_score"?\s*:\s*([0-9]+(?:\.[0-9]+)?)', raw_text)
+    nostalgia_m = re.search(r'"?nostalgia_score"?\s*:\s*([0-9]+(?:\.[0-9]+)?)', raw_text)
+    if hype_m and story_m and nostalgia_m:
+        try:
+            return {
+                "hype_score": float(hype_m.group(1)),
+                "story_score": float(story_m.group(1)),
+                "nostalgia_score": float(nostalgia_m.group(1))
+            }
+        except (ValueError, TypeError):
+            pass
+
     return None
 
 
@@ -132,8 +146,7 @@ class SteamLLMInferenceBaseline:
             "{\n"
             '  "hype_score": float,\n'
             '  "story_score": float,\n'
-            '  "nostalgia_score": float,\n'
-            '  "reasoning": "brief 1-2 sentence explanation"\n'
+            '  "nostalgia_score": float\n'
             "}"
         )
 
@@ -194,44 +207,49 @@ class SteamLLMInferenceBaseline:
 
 def run_inference_baseline(
     model_id: str = "Qwen/Qwen3.5-0.8B",
-    num_samples: int = 3
-):
+    num_samples: int = 3,
+    output_path: str = "llm-pipeline/inference_baseline_results.json"
+) -> Dict[str, Any]:
     print(f"\n=======================================================")
     print(f"   Steam Hit Predictor: LLM Inference Baseline        ")
     print(f"   Model: {model_id}                                   ")
     print(f"=======================================================\n")
 
-    # Load cleaned descriptions and tabular metadata
-    cleaned_desc_path = "cleaned_data/steam_descriptions_cleaned.csv"
+    # Load from cleaned train split (which now contains all clean descriptions)
     train_split_path = "cleaned_data/train.csv"
+    cleaned_desc_path = "cleaned_data/steam_descriptions_cleaned.csv"
 
-    if os.path.exists(cleaned_desc_path) and os.path.exists(train_split_path):
+    if os.path.exists(train_split_path):
+        df_games = pd.read_csv(train_split_path)
+    elif os.path.exists(cleaned_desc_path):
+        df_steam = pd.read_csv("raw_data/steam.csv")
         df_desc = pd.read_csv(cleaned_desc_path)
-        df_steam = pd.read_csv(train_split_path)
-        df_merged = pd.merge(df_steam, df_desc, left_on="appid", right_on="steam_appid")
+        df_games = pd.merge(df_steam, df_desc, left_on="appid", right_on="steam_appid")
     else:
         # Fallback to raw data
         df_steam = pd.read_csv("raw_data/steam.csv")
         df_desc = pd.read_csv("raw_data/steam_description_data.csv")
-        df_merged = pd.merge(df_steam, df_desc, left_on="appid", right_on="steam_appid")
-        df_merged["clean_description"] = df_merged.get("short_description", "")
+        df_games = pd.merge(df_steam, df_desc, left_on="appid", right_on="steam_appid")
+        df_games["clean_description"] = df_games.get("short_description", "")
 
     baseline = SteamLLMInferenceBaseline(model_id=model_id)
 
     # Pick sample games across genres
     sample_appids = [10, 400, 570]  # Counter-Strike, Portal, Dota 2
-    samples = df_merged[df_merged["appid"].isin(sample_appids)]
+    samples = df_games[df_games["appid"].isin(sample_appids)]
     
     if len(samples) < num_samples:
-        samples = df_merged.head(num_samples)
+        samples = df_games.head(num_samples)
 
+    runs = []
     print("\n--- Running Baseline Inference with RAM Tracking ---")
     for idx, row in samples.iterrows():
         title = row["name"]
-        genres = row["genres"]
-        desc = row.get("clean_description") or row.get("short_description") or ""
+        appid = int(row.get("appid", 0))
+        genres = str(row.get("genres", ""))
+        desc = str(row.get("clean_description") or row.get("short_description") or "")
         
-        print(f"\nEvaluating Game: '{title}' ({genres})")
+        print(f"\nEvaluating Game: '{title}' (AppID: {appid}, Genres: {genres})")
         res = baseline.predict(title, genres, desc)
         mem = res["ram_usage"]
         
@@ -243,15 +261,63 @@ def run_inference_baseline(
         print(f"  * GPU VRAM Alloc:   {mem['gpu_vram_allocated_gb']} GB (Reserved: {mem['gpu_vram_reserved_gb']} GB)")
         print(f"  * Raw Generation:   {res['raw_output']}")
 
+        run_entry = {
+            "appid": appid,
+            "game_name": title,
+            "genres": genres,
+            "description_snippet": desc[:200] + ("..." if len(desc) > 200 else ""),
+            "raw_output": res["raw_output"],
+            "parsed_json": res["parsed_json"],
+            "is_valid_json": res["is_valid_json"],
+            "scores": res["scores"],
+            "latency_seconds": res["latency_seconds"],
+            "tokens_per_sec": res["tokens_per_sec"],
+            "ram_usage": mem
+        }
+        runs.append(run_entry)
+
+    # Compute aggregate summary
+    total = len(runs)
+    valid_count = sum(1 for r in runs if r["is_valid_json"])
+    avg_latency = sum(r["latency_seconds"] for r in runs) / max(total, 1)
+    avg_tok_s = sum(r["tokens_per_sec"] for r in runs) / max(total, 1)
+    peak_process_ram = max((r["ram_usage"]["process_ram_gb"] for r in runs), default=0.0)
+    peak_gpu_vram = max((r["ram_usage"]["gpu_vram_allocated_gb"] for r in runs), default=0.0)
+
+    summary_results = {
+        "model_id": model_id,
+        "device": baseline.device,
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "total_samples": total,
+        "valid_json_count": valid_count,
+        "validity_rate": round((valid_count / max(total, 1)) * 100.0, 1),
+        "avg_latency_sec": round(avg_latency, 3),
+        "avg_tokens_per_sec": round(avg_tok_s, 1),
+        "ram_summary": {
+            "peak_process_ram_gb": peak_process_ram,
+            "peak_gpu_vram_allocated_gb": peak_gpu_vram,
+            "latest_system_ram_percent": runs[-1]["ram_usage"]["system_ram_percent"] if runs else 0.0
+        },
+        "runs": runs
+    }
+
+    if output_path:
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        with open(output_path, "w") as f:
+            json.dump(summary_results, f, indent=2)
+        print(f"\nSaved inference baseline results JSON to: {output_path}")
+
     print("\n=======================================================")
-    print("Inference Baseline completed successfully!")
+    print(f"Inference Baseline completed! Validity Rate: {summary_results['validity_rate']}% | Avg Latency: {summary_results['avg_latency_sec']}s")
     print("=======================================================\n")
+    return summary_results
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Steam Hit Predictor - LLM Inference Baseline")
     parser.add_argument("--model_id", type=str, default="Qwen/Qwen3.5-0.8B", help="Hugging Face Model ID")
     parser.add_argument("--num_samples", type=int, default=3, help="Number of qualitative sample games to evaluate")
+    parser.add_argument("--output_path", type=str, default="llm-pipeline/inference_baseline_results.json", help="Output JSON path")
     args = parser.parse_args()
 
-    run_inference_baseline(model_id=args.model_id, num_samples=args.num_samples)
+    run_inference_baseline(model_id=args.model_id, num_samples=args.num_samples, output_path=args.output_path)

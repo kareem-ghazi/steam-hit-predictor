@@ -68,19 +68,18 @@ def clean_html_text(text: Optional[str]) -> str:
 
 
 def clean_and_prepare_descriptions(
-    desc_path: str = "raw_data/steam_description_data.csv",
-    save_path: str = "cleaned_data/steam_descriptions_cleaned.csv"
+    desc_path: str = "raw_data/steam_description_data.csv"
 ) -> pd.DataFrame:
     """
     Loads, cleans, and deduplicates the Steam descriptions dataset.
-    Creates a unified 'clean_description' column from short_description,
-    about_the_game, and detailed_description.
+    Cleans HTML markup and entity encoding across short, about, and detailed descriptions,
+    and produces a consolidated 'clean_description' column.
     """
     if not os.path.exists(desc_path):
         print(f"Warning: Description file {desc_path} not found. Skipping description merge.")
-        return pd.DataFrame(columns=["steam_appid", "clean_description"])
+        return pd.DataFrame(columns=["steam_appid", "short_description", "about_the_game", "detailed_description", "clean_description"])
     
-    print("Cleaning and preparing Steam descriptions...")
+    print("Cleaning and preparing Steam descriptions from raw_data/steam_description_data.csv...")
     df_desc = pd.read_csv(desc_path)
     
     # Clean HTML across description columns
@@ -103,14 +102,15 @@ def clean_and_prepare_descriptions(
         
     df_desc["clean_description"] = df_desc.apply(select_best_description, axis=1)
     
-    # Save cleaned descriptions table
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    export_df = df_desc[["steam_appid", "clean_description", "clean_short"]].rename(
-        columns={"clean_short": "short_description_cleaned"}
-    )
-    export_df.to_csv(save_path, index=False)
-    print(f"Cleaned descriptions saved to: {save_path} ({len(export_df)} records)")
-    
+    # Consolidate into standardized columns
+    export_df = pd.DataFrame({
+        "steam_appid": df_desc["steam_appid"],
+        "short_description": df_desc["clean_short"],
+        "about_the_game": df_desc["clean_about"],
+        "detailed_description": df_desc["clean_detailed"],
+        "clean_description": df_desc["clean_description"]
+    })
+    print(f"Cleaned {len(export_df)} Steam descriptions.")
     return export_df
 
 
@@ -250,6 +250,41 @@ def apply_ordinal_encoding(
     return train_df, valid_df, test_df, encoder
 
 
+def reorder_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Organizes columns into a clean, logical structure:
+    1. Identifiers & Metadata (appid, name, release_date, english, developer, publisher, platforms, ...)
+    2. Steam Descriptions (short_description, about_the_game, detailed_description, clean_description)
+    3. Ordinal Encoded Features (genres_encoded, platforms_encoded, publisher_encoded)
+    4. LLM Vibe Scores (hype_score, story_score, nostalgia_score)
+    5. Steam Rating Tier (rating_text)
+    6. Target Variable (is_hit) - AT THE VERY END
+    """
+    preferred_order = [
+        # Identifiers & Metadata
+        "appid", "name", "release_date", "english", "developer", "publisher", 
+        "platforms", "required_age", "categories", "genres", "steamspy_tags",
+        "achievements", "average_playtime", "median_playtime", "owners", "price",
+        # Steam Descriptions
+        "short_description", "about_the_game", "detailed_description", "clean_description",
+        # Ordinal Encoded Features
+        "genres_encoded", "platforms_encoded", "publisher_encoded",
+        # LLM Vibe Scores
+        "hype_score", "story_score", "nostalgia_score",
+        # Steam Rating Tier
+        "rating_text",
+        # Target variable at the very end
+        "is_hit"
+    ]
+    cols = [c for c in preferred_order if c in df.columns]
+    extra_cols = [c for c in df.columns if c not in cols and c != "is_hit"]
+    if "is_hit" in df.columns:
+        cols = [c for c in cols if c != "is_hit"] + extra_cols + ["is_hit"]
+    else:
+        cols = cols + extra_cols
+    return df[cols]
+
+
 def split_and_save_data(
     df: pd.DataFrame,
     output_dir: str = "cleaned_data",
@@ -262,7 +297,7 @@ def split_and_save_data(
     """
     Splits the cleaned dataset into train (80%), valid (10%), and test (10%) sets
     using stratified sampling on 'is_hit', applies Ordinal Encoding on genres, platforms,
-    and publisher, and saves splits to output_dir.
+    and publisher, reorders columns so target 'is_hit' is at the end, and saves splits to output_dir.
     """
     os.makedirs(output_dir, exist_ok=True)
     if encoder_save_path:
@@ -289,6 +324,11 @@ def split_and_save_data(
     # Apply Ordinal Encoding on genres, platforms & publisher
     train_df, valid_df, test_df, encoder = apply_ordinal_encoding(train_df, valid_df, test_df)
     
+    # Organize columns logically with descriptions included and target is_hit at the end
+    train_df = reorder_columns(train_df)
+    valid_df = reorder_columns(valid_df)
+    test_df = reorder_columns(test_df)
+    
     # Save encoder
     if encoder_save_path:
         with open(encoder_save_path, "wb") as f:
@@ -308,6 +348,7 @@ def split_and_save_data(
     print(f"  - Train: {len(train_df)} samples ({len(train_df)/len(df):.1%}) -> {train_path}")
     print(f"  - Valid: {len(valid_df)} samples ({len(valid_df)/len(df):.1%}) -> {valid_path}")
     print(f"  - Test:  {len(test_df)} samples ({len(test_df)/len(df):.1%}) -> {test_path}")
+    print(f"Final columns (target at end): {list(train_df.columns)}")
     
     return train_df, valid_df, test_df, encoder
 
@@ -321,26 +362,28 @@ def prepare_data(
     Full pipeline execution:
     1. Loads raw dataset and cleans tabular fields
     2. Cleans and prepares steam descriptions (HTML stripping, entity unescaping)
-    3. Merges clean descriptions with tabular data
+    3. Merges clean descriptions directly into the tabular dataset
     4. Engineers approval_rate, rating_text, is_hit, and mock LLM features
     5. Drops data leakage columns
     6. Splits into train (80%), valid (10%), test (10%)
     7. Fits & applies Ordinal Encoding on 'genres', 'platforms', and 'publisher'
-    8. Saves all splits and cleaned descriptions to cleaned_data/
+    8. Orders columns with target 'is_hit' at the end and saves splits
     """
     df_raw = load_dataset(raw_path)
     df_clean = clean_dataset(df_raw)
     
-    # Clean and merge descriptions
-    cleaned_desc_path = os.path.join(output_dir, "steam_descriptions_cleaned.csv")
-    df_desc_clean = clean_and_prepare_descriptions(desc_path, save_path=cleaned_desc_path)
+    # Clean and merge descriptions directly into tabular dataset
+    df_desc_clean = clean_and_prepare_descriptions(desc_path)
     if not df_desc_clean.empty and "steam_appid" in df_desc_clean.columns:
-        df_clean = pd.merge(df_clean, df_desc_clean[["steam_appid", "clean_description"]], left_on="appid", right_on="steam_appid", how="left")
-        df_clean["clean_description"] = df_clean["clean_description"].fillna("No description available.")
+        desc_cols = ["steam_appid", "short_description", "about_the_game", "detailed_description", "clean_description"]
+        df_clean = pd.merge(df_clean, df_desc_clean[desc_cols], left_on="appid", right_on="steam_appid", how="left")
+        for col in ["short_description", "about_the_game", "detailed_description", "clean_description"]:
+            df_clean[col] = df_clean[col].fillna("No description available.")
         if "steam_appid" in df_clean.columns:
             df_clean = df_clean.drop(columns=["steam_appid"])
     else:
-        df_clean["clean_description"] = "No description available."
+        for col in ["short_description", "about_the_game", "detailed_description", "clean_description"]:
+            df_clean[col] = "No description available."
         
     df_engineered = engineer_features(df_clean, include_mock_llm=True)
     df_leakage_free = drop_leakage_columns(df_engineered)
@@ -351,7 +394,7 @@ def prepare_data(
 if __name__ == "__main__":
     print("--- Executing Data Cleaning, Description Preparation, Ordinal Encoding & Split Pipeline ---")
     train_df, valid_df, test_df, encoder = prepare_data()
-    print("\nSample Ordinal Encoded Features:")
-    print(train_df[["name", "english", "publisher", "publisher_encoded", "genres_encoded", "platforms_encoded", "price", "is_hit"]].head(5))
-    print("\nSample Cleaned Description:")
-    print(train_df[["name", "clean_description"]].head(2).to_dict(orient="records"))
+    print("\nDataset Column Order:")
+    print(train_df.columns.tolist())
+    print("\nSample Rows:")
+    print(train_df[["name", "short_description", "clean_description", "is_hit"]].head(2).to_dict(orient="records"))

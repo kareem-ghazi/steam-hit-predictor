@@ -1,0 +1,101 @@
+{
+  "model_id": "Qwen/Qwen3.5-0.8B",
+  "device": "cuda",
+  "timestamp": "2026-10-22 21:03:43",
+  "total_samples": 3,
+  "valid_json_count": 3,
+  "validity_rate": 100.0,
+  "avg_latency_sec": 5.328,
+  "avg_tokens_per_sec": 7.8,
+  "ram_summary": {
+    "peak_process_ram_gb": 1.974,
+    "peak_gpu_vram_allocated_gb": 1.409,
+    "latest_system_ram_percent": 76.2
+  },
+  "runs": [
+    {
+      "appid": 602930,
+      "game_name": "Wordlase",
+      "genres": "casual;indie",
+      "description_snippet": "Wordlase is a word-puzzle game. You need to compile words from the letters of offered one. For example, you can make words \"ant\" and \"potion\" from the letters of \"interpolation\". But you can't assembl...",
+      "raw_output": "{\n  \"hype_score\": 8.5,\n  \"story_score\": 7.0,\n  \"nostalgia_score\": 6.5\n}",
+      "parsed_json": {
+        "hype_score": 8.5,
+        "story_score": 7.0,
+        "nostalgia_score": 6.5
+      },
+      "is_valid_json": true,
+      "scores": {
+        "hype_score": 8.5,
+        "story_score": 7.0,
+        "nostalgia_score": 6.5
+      },
+      "latency_seconds": 6.023,
+      "tokens_per_sec": 6.8,
+      "ram_usage": {
+        "process_ram_gb": 1.973,
+        "system_ram_used_gb": 11.54,
+        "system_ram_total_gb": 15.24,
+        "system_ram_percent": 75.7,
+        "gpu_vram_allocated_gb": 1.409,
+        "gpu_vram_reserved_gb": 1.486
+      }
+    },
+    {
+      "appid": 869840,
+      "game_name": "Feather Of Praying \u7fbd\u7ffc\u7684\u7948\u613f",
+      "genres": "adventure;indie",
+      "description_snippet": "Everyone has their own story and also has a different fate from others. No matter how cruel the reality is, we all have the right to hope for the future, look forward to, and look forward to, wishing ...",
+      "raw_output": "{\n  \"hype_score\": 8.5,\n  \"story_score\": 7.5,\n  \"nostalgia_score\": 6.0\n}",
+      "parsed_json": {
+        "hype_score": 8.5,
+        "story_score": 7.5,
+        "nostalgia_score": 6.0
+      },
+      "is_valid_json": true,
+      "scores": {
+        "hype_score": 8.5,
+        "story_score": 7.5,
+        "nostalgia_score": 6.0
+      },
+      "latency_seconds": 4.892,
+      "tokens_per_sec": 8.4,
+      "ram_usage": {
+        "process_ram_gb": 1.974,
+        "system_ram_used_gb": 11.55,
+        "system_ram_total_gb": 15.24,
+        "system_ram_percent": 75.8,
+        "gpu_vram_allocated_gb": 1.409,
+        "gpu_vram_reserved_gb": 1.486
+      }
+    },
+    {
+      "appid": 682670,
+      "game_name": "\u521d\u989c - The Prototype",
+      "genres": "adventure;indie;rpg",
+      "description_snippet": "Find yourself becoming Masato Gu - a desperate young physicist, and try to discover the truth about a lab accident five years ago in which you lost your love, with the Time Machine! But before that, w...",
+      "raw_output": "{\n  \"hype_score\": 7.5,\n  \"story_score\": 6.5,\n  \"nostalgia_score\": 5.0\n}",
+      "parsed_json": {
+        "hype_score": 7.5,
+        "story_score": 6.5,
+        "nostalgia_score": 5.0
+      },
+      "is_valid_json": true,
+      "scores": {
+        "hype_score": 7.5,
+        "story_score": 6.5,
+        "nostalgia_score": 5.0
+      },
+      "latency_seconds": 5.069,
+      "tokens_per_sec": 8.1,
+      "ram_usage": {
+        "process_ram_gb": 1.974,
+        "system_ram_used_gb": 11.61,
+        "system_ram_total_gb": 15.24,
+        "system_ram_percent": 76.2,
+        "gpu_vram_allocated_gb": 1.409,
+        "gpu_vram_reserved_gb": 1.486
+      }
+    }
+  ]
+}

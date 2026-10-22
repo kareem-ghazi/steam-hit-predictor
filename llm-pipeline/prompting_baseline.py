@@ -118,26 +118,49 @@ def build_few_shot_prompt(tokenizer, title: str, genres: str, desc: str) -> str:
 
 def build_cot_prompt(tokenizer, title: str, genres: str, desc: str) -> str:
     system = (
-        "You are an AI video game analyst. Analyze the game concept through step-by-step reasoning "
-        "before producing the final scores.\n"
-        "Reason through:\n"
-        "1. Story & Lore (Narrative depth)\n"
-        "2. Community & Virality (Hype potential)\n"
-        "3. Retro / Heritage (Nostalgia appeal)\n\n"
-        "After your reasoning, output the final scores in a ```json code block formatted as:\n"
+        "You are an AI video game analyst. Analyze the game concept through brief step-by-step reasoning "
+        "(1 concise sentence each for story, hype, and nostalgia), followed immediately by the final JSON scores "
+        "(each 1.0 to 10.0).\n\n"
+        "Output format:\n"
+        "Reasoning:\n"
+        "- Story: <1 sentence analysis>\n"
+        "- Hype: <1 sentence analysis>\n"
+        "- Nostalgia: <1 sentence analysis>\n"
         "```json\n"
         '{"hype_score": float, "story_score": float, "nostalgia_score": float}\n'
         "```"
     )
-    user = f"Title: {title}\nGenres: {genres}\nDescription: {desc[:800]}\nProvide your step-by-step reasoning and final JSON scores:"
+    
+    example_user = (
+        "Title: Half-Life\n"
+        "Genres: Action;Sci-fi\n"
+        "Description: Named Game of the Year by over 50 publications, Valve's debut title blends action and adventure."
+    )
+    example_assistant = (
+        "Reasoning:\n"
+        "- Story: Groundbreaking environmental storytelling and silent protagonist narrative.\n"
+        "- Hype: Legendary FPS franchise with historic gaming influence.\n"
+        "- Nostalgia: Foundational 1998 classic revered by retro gaming enthusiasts.\n"
+        "```json\n"
+        '{"hype_score": 8.0, "story_score": 8.5, "nostalgia_score": 9.5}\n'
+        "```"
+    )
+    
+    current_user = f"Title: {title}\nGenres: {genres}\nDescription: {desc[:800]}"
 
     messages = [
         {"role": "system", "content": system},
-        {"role": "user", "content": user}
+        {"role": "user", "content": example_user},
+        {"role": "assistant", "content": example_assistant},
+        {"role": "user", "content": current_user}
     ]
     if hasattr(tokenizer, "apply_chat_template"):
         return tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    return f"{system}\n\nUser:\n{user}\n\nAssistant:"
+    return (
+        f"{system}\n\n"
+        f"Example:\nUser: {example_user}\nAssistant:\n{example_assistant}\n\n"
+        f"User: {current_user}\nAssistant:"
+    )
 
 
 class PromptingBaselineEvaluator:
@@ -196,7 +219,7 @@ class PromptingBaselineEvaluator:
         strategies = [
             (PromptStrategy.ZERO_SHOT, build_zero_shot_prompt, 100),
             (PromptStrategy.FEW_SHOT, build_few_shot_prompt, 100),
-            (PromptStrategy.CHAIN_OF_THOUGHT, build_cot_prompt, 200),
+            (PromptStrategy.CHAIN_OF_THOUGHT, build_cot_prompt, 220),
         ]
 
         results = {}
@@ -247,11 +270,13 @@ def run_prompting_baseline(
     output_path: str = "llm-pipeline/prompting_baseline_results.json"
 ):
     print("Loading benchmark games from Steam cleaned dataset...")
-    desc_path = "cleaned_data/steam_descriptions_cleaned.csv"
     train_path = "cleaned_data/train.csv"
+    desc_path = "cleaned_data/steam_descriptions_cleaned.csv"
 
-    if os.path.exists(desc_path) and os.path.exists(train_path):
-        df_steam = pd.read_csv(train_path)
+    if os.path.exists(train_path):
+        merged = pd.read_csv(train_path)
+    elif os.path.exists(desc_path):
+        df_steam = pd.read_csv("raw_data/steam.csv")
         df_desc = pd.read_csv(desc_path)
         merged = pd.merge(df_steam, df_desc, left_on="appid", right_on="steam_appid")
     else:
