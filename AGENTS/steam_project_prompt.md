@@ -34,8 +34,10 @@ steam-hit-predictor/
 │   ├── inference_baseline.py    # Baseline inference with RAM tracking (Qwen3.5-0.8B)
 │   ├── prompting_baseline.py    # Zero-shot, Few-shot, CoT accuracy & validity benchmark
 │   └── qlora_training.py     
+├── generate_vibe_scores.py       # Heuristic Vibe Score generator (hype, story, nostalgia)
 ├── ml-pipeline/                 
 │   ├── data_prep.py             # Tabular & HTML description cleaning, Ordinal Encoding
+│   ├── generate_vibe_scores.py  # Vibe score engine
 │   └── xgboost_train.py         # XGBoost training with publisher & english features
 ├── backend/                     
 │   ├── main.py                  
@@ -93,8 +95,7 @@ Please begin with Phase 1. Output the code, explain it briefly, and then output 
 * [x] Engineer the target variable `is_hit`: 1 if `approval_rate` >= 0.80 and total reviews >= 50, else 0.
 * [x] Drop data leakage columns (positive/negative ratings, total reviews, approval_rate).
 * [x] Split the cleaned dataset into stratified train (80%), valid (10%), and test (10%) splits and save them as .csv files in `cleaned_data/`.
-* [x] Apply Ordinal Encoding to `genres`, `platforms`, and `publisher` columns and persist the encoder for training and inference.
-* [x] In `xgboost_train.py`, train an XGBoost Classifier using `cleaned_data/` for tabular classification with standard features (price, english, ordinal-encoded genres, platforms, publisher) alongside mock placeholders for LLM features (hype_score, story_score, nostalgia_score). Perform training with validation monitoring, compute holdout test accuracy/F1-score, and save the model as a `.pkl` file to `saved_models/ml_models/`.
+* [x] In `generate_vibe_scores.py`, calculate accurate heuristic vibe scores (`hype_score`, `story_score`, `nostalgia_score`) derived from descriptions, tags, and metadata, integrated into `data_prep.py`. In `xgboost_train.py`, train an XGBoost Classifier using `cleaned_data/` for tabular classification with standard features (price, english, ordinal-encoded genres, platforms, publisher) alongside the heuristic vibe scores. Perform training with validation monitoring, compute holdout test accuracy/F1-score, and save the model as a `.pkl` file to `saved_models/ml_models/`.
 
 #### Phase 2: LLM Baselines (llm-pipeline)
 

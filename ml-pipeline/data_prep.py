@@ -4,9 +4,18 @@ import html
 import pickle
 import numpy as np
 import pandas as pd
+import sys
 from typing import Tuple, Optional
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OrdinalEncoder
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.abspath(os.path.join(current_dir, ".."))
+for p in [current_dir, parent_dir]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
+from generate_vibe_scores import compute_vibe_scores_dataframe
 
 
 def calculate_steam_rating_text(approval_rate: float, total_reviews: int) -> str:
@@ -171,13 +180,14 @@ def clean_dataset(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def engineer_features(df: pd.DataFrame, include_mock_llm: bool = True, seed: int = 42) -> pd.DataFrame:
+def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Performs data engineering and target creation:
+    Performs data engineering, target creation, and calculates accurate heuristic vibe scores:
     1. approval_rate = positive_ratings / (positive_ratings + negative_ratings)
     2. rating_text matching Steam review tiers taking volume into account
     3. is_hit target variable = 1 if approval_rate >= 0.80 and total reviews >= 50, else 0
-    4. Adds mock placeholders for LLM features (hype_score, story_score, nostalgia_score)
+    4. Calculates accurate heuristic vibe scores (hype_score, story_score, nostalgia_score)
+       correlating with the actual game descriptions, tags, genres, categories, and metadata.
     """
     df = df.copy()
     
@@ -201,18 +211,8 @@ def engineer_features(df: pd.DataFrame, include_mock_llm: bool = True, seed: int
         0
     )
     
-    if include_mock_llm:
-        rng = np.random.RandomState(seed)
-        n = len(df)
-        
-        base_hype = np.where(df["is_hit"] == 1, 7.5, 5.0) + rng.normal(0, 1.2, size=n)
-        base_story = np.where(df["is_hit"] == 1, 7.2, 5.2) + rng.normal(0, 1.3, size=n)
-        base_nostalgia = np.where(df["is_hit"] == 1, 6.8, 4.8) + rng.normal(0, 1.5, size=n)
-        
-        df["hype_score"] = np.clip(np.round(base_hype, 1), 1.0, 10.0)
-        df["story_score"] = np.clip(np.round(base_story, 1), 1.0, 10.0)
-        df["nostalgia_score"] = np.clip(np.round(base_nostalgia, 1), 1.0, 10.0)
-        
+    # Calculate accurate heuristic vibe scores using game description and metadata
+    df = compute_vibe_scores_dataframe(df)
     return df
 
 
@@ -385,7 +385,7 @@ def prepare_data(
         for col in ["short_description", "about_the_game", "detailed_description", "clean_description"]:
             df_clean[col] = "No description available."
         
-    df_engineered = engineer_features(df_clean, include_mock_llm=True)
+    df_engineered = engineer_features(df_clean)
     df_leakage_free = drop_leakage_columns(df_engineered)
     
     return split_and_save_data(df_leakage_free, output_dir=output_dir)

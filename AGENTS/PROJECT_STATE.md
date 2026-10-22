@@ -5,7 +5,13 @@
   - Configured project `.venv` using master Conda environment packages with `--system-site-packages`.
   - Cleaned tabular Steam store dataset (`raw_data/steam.csv`): deduplication, null imputation, non-negative numeric clamping.
   - Cleaned and prepared Steam descriptions (`raw_data/steam_description_data.csv`): stripped HTML tags, unescaped HTML entities, normalized whitespace.
-  - **Embedded descriptions directly into splits**: `short_description`, `about_the_game`, `detailed_description`, and `clean_description` are now direct columns inside `cleaned_data/train.csv` (21,660 rows), `cleaned_data/valid.csv` (2,707 rows), and `cleaned_data/test.csv` (2,708 rows).
+  - **Embedded descriptions directly into splits**: `short_description`, `about_the_game`, `detailed_description`, and `clean_description` are direct columns inside `cleaned_data/train.csv` (21,660 rows), `cleaned_data/valid.csv` (2,707 rows), and `cleaned_data/test.csv` (2,708 rows).
+  - **Dedicated Heuristic Vibe Score Generator ([generate_vibe_scores.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/generate_vibe_scores.py)):**
+    - Replaced artificial random/mock normal distribution placeholders with genuine, description-correlated heuristic scoring across all 27,075 catalog games.
+    - **Hype Score (1.0 - 10.0):** Evaluated from multiplayer/esports/action description keywords, community tags, AAA publisher prestige, and market footprint (`owners` bracket). (Mean: 5.28, Std: 1.27)
+    - **Story Score (1.0 - 10.0):** Evaluated from narrative keywords (lore, character, plot, dialogue, mystery), narrative genres (rpg, adventure, visual novel), description depth, and penalties for pure casual/match-3/idle mechanics. (Mean: 5.11, Std: 1.80)
+    - **Nostalgia Score (1.0 - 10.0):** Evaluated from release date vintage (pioneer <1999, golden 2000-2004, vintage 2005-2008), retro keywords (pixel-art, 8-bit, 16-bit, arcade, homage, remake, old-school), and franchise heritage. (Mean: 4.22, Std: 1.03)
+    - Fully integrated into [ml-pipeline/data_prep.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/ml-pipeline/data_prep.py).
   - **Organized column hierarchy with target at end**:
     1. Identifiers & Metadata: `appid`, `name`, `release_date`, `english`, `developer`, `publisher`, `platforms`, `required_age`, `categories`, `genres`, `steamspy_tags`, `achievements`, `average_playtime`, `median_playtime`, `owners`, `price`
     2. Steam Descriptions: `short_description`, `about_the_game`, `detailed_description`, `clean_description`
@@ -14,17 +20,19 @@
     5. Steam Rating Tier: `rating_text`
     6. **Target Variable**: `is_hit` (**placed at the very end**)
   - Applied and saved `OrdinalEncoder` across `genres`, `platforms`, and `publisher` (`saved_models/ml_models/ordinal_encoder.pkl`).
-  - Retrained `XGBClassifier` on 8 features (`price`, `english`, `genres_encoded`, `platforms_encoded`, `publisher_encoded`, `hype_score`, `story_score`, `nostalgia_score`) with validation tracking.
-  - Achieved **94.28% Accuracy**, **82.44% Precision**, **90.79% Recall**, and **0.8642 F1-Score** on the holdout test set (`saved_models/ml_models/xgboost_hit_predictor.pkl`).
+  - Retrained `XGBClassifier` in [ml-pipeline/xgboost_train.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/ml-pipeline/xgboost_train.py) on authentic heuristic features without synthetic label leakage:
+    - Holdout test evaluation: **72.60% Accuracy**, **67.22% Recall**, **39.29% Precision**, **0.4959 F1-Score**.
+    - Feature importance analysis confirms that the three vibe scores account for **35.05% of the total predictive power** (`hype_score`: 15.88%, `nostalgia_score`: 10.74%, `story_score`: 8.43%).
+    - Saved model artifact to `saved_models/ml_models/xgboost_hit_predictor.pkl`.
 - **Phase 2: LLM Baselines & Containerization:**
   - Created `.env` file for Hugging Face authentication (`HF_TOKEN`).
   - Implemented `llm-pipeline/inference_baseline.py` using **Qwen3.5-0.8B** on GPU (`cuda:0`):
-    - System prompt and JSON payload parser with markdown, trailing comma, and regex fallback handling.
-    - Real-time RAM & VRAM tracking after every generation (process RSS, system RAM used/total/%, and GPU allocated/reserved memory).
-    - **Results Export**: Exports aggregate metrics and per-game runs to `llm-pipeline/inference_baseline_results.json` (100.0% validity rate, 5.328s avg latency, ~1.97 GB Process RAM, ~1.41 GB GPU VRAM).
+    - System prompt and JSON payload parser with regex fallback.
+    - Real-time RAM & VRAM tracking after every generation.
+    - Exports metrics to `llm-pipeline/inference_baseline_results.json` (100.0% validity rate, 5.328s avg latency, ~1.97 GB Process RAM, ~1.41 GB GPU VRAM).
   - Implemented `llm-pipeline/prompting_baseline.py`:
     - Benchmarked **Zero-Shot**, **Few-Shot**, and **Chain-of-Thought (CoT)** prompting strategies.
-    - **Resolved CoT Validity**: Restructured prompt with concise structured reasoning dimensions and token allocation, achieving **100.0% validity** across all three strategies:
+    - Structured CoT prompt with concise reasoning dimensions, achieving **100.0% validity** across all three strategies:
       - **Zero-Shot:** 100.0% validity, 75.0% accuracy (±2.0 tolerance), 1.58 MAE, 5.694s latency.
       - **Few-Shot:** 100.0% validity, 75.0% accuracy (±2.0 tolerance), 1.67 MAE, 4.093s latency.
       - **Chain-of-Thought:** 100.0% validity, 66.7% accuracy (±2.0 tolerance), 1.83 MAE, 13.735s latency.
@@ -41,14 +49,18 @@
 - `accelerate`
 - `scikit-learn`
 - `pandas`
+- `numpy`
 
 ## 3. Current Data Flow
 ```text
 raw_data/steam.csv ────────────────┐
 raw_data/steam_description_data.csv─┴─► [ml-pipeline/data_prep.py]
+                                              ▲
+                                              │ Uses [generate_vibe_scores.py]
+                                              │ (Calculates real description & metadata vibes)
                                               │
                                               ├─► cleaned_data/ (train.csv, valid.csv, test.csv)
-                                              │   (includes short, about, detailed, clean_description; target is_hit at end)
+                                              │   (short, about, detailed, clean_description; target is_hit at end)
                                               ├─► saved_models/ml_models/ordinal_encoder.pkl
                                               │   (genres, platforms, publisher)
                                               ▼
@@ -56,7 +68,7 @@ raw_data/steam_description_data.csv─┴─► [ml-pipeline/data_prep.py]
                                               │
                                               ▼
                                       saved_models/ml_models/xgboost_hit_predictor.pkl
-                                      (94.28% Acc, 0.8642 F1)
+                                      (72.60% Acc, 67.22% Recall, 35% Vibe Importance)
                                               ▲
                                               │
                                       [llm-pipeline/inference_baseline.py]
