@@ -2,6 +2,7 @@ import os
 import re
 import json
 import time
+import psutil
 import argparse
 from typing import Dict, Any, Optional, Tuple
 import pandas as pd
@@ -9,30 +10,57 @@ import torch
 from dotenv import load_dotenv
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
-# Load environment variables (such as HF_TOKEN)
 load_dotenv()
+
+
+def get_current_ram_usage() -> Dict[str, Any]:
+    """
+    Measures current system RAM and GPU VRAM usage.
+    """
+    process = psutil.Process(os.getpid())
+    process_ram_gb = process.memory_info().rss / (1024 ** 3)
+    vm = psutil.virtual_memory()
+    
+    usage = {
+        "process_ram_gb": round(process_ram_gb, 3),
+        "system_ram_used_gb": round(vm.used / (1024 ** 3), 2),
+        "system_ram_total_gb": round(vm.total / (1024 ** 3), 2),
+        "system_ram_percent": vm.percent,
+        "gpu_vram_allocated_gb": 0.0,
+        "gpu_vram_reserved_gb": 0.0
+    }
+    
+    if torch.cuda.is_available():
+        usage["gpu_vram_allocated_gb"] = round(torch.cuda.memory_allocated() / (1024 ** 3), 3)
+        usage["gpu_vram_reserved_gb"] = round(torch.cuda.memory_reserved() / (1024 ** 3), 3)
+        
+    return usage
 
 
 def extract_json_payload(raw_text: str) -> Optional[Dict[str, Any]]:
     """
     Extracts and parses JSON object from model output, handling
-    markdown backticks, preamble text, or trailing commentary.
+    markdown backticks, trailing commas, preamble text, or trailing commentary.
     """
-    # 1. Look for ```json ... ``` code blocks
+    def try_parse(candidate: str) -> Optional[Dict[str, Any]]:
+        # Strip trailing commas before closing braces/brackets
+        sanitized = re.sub(r",\s*([}\]])", r"\1", candidate.strip())
+        try:
+            return json.loads(sanitized)
+        except json.JSONDecodeError:
+            return None
+
     block_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", raw_text, re.DOTALL)
     if block_match:
-        try:
-            return json.loads(block_match.group(1))
-        except json.JSONDecodeError:
-            pass
+        res = try_parse(block_match.group(1))
+        if res:
+            return res
 
-    # 2. Look for any top-level JSON object {...}
     obj_match = re.search(r"(\{[\s\S]*\})", raw_text)
     if obj_match:
-        try:
-            return json.loads(obj_match.group(1))
-        except json.JSONDecodeError:
-            pass
+        res = try_parse(obj_match.group(1))
+        if res:
+            return res
 
     return None
 
@@ -65,10 +93,10 @@ def validate_vibe_scores(data: Optional[Dict[str, Any]]) -> Tuple[bool, Dict[str
 
 class SteamLLMInferenceBaseline:
     """
-    Establishes a working inference baseline with a local instruction-tuned LLM
-    to extract game vibe scores (hype, story, nostalgia) from descriptions.
+    Establishes a working inference baseline with Qwen3.5-0.8B on GPU,
+    extracting game vibe scores and monitoring RAM usage after each prediction.
     """
-    def __init__(self, model_id: str = "Qwen/Qwen2.5-0.5B-Instruct", device: Optional[str] = None):
+    def __init__(self, model_id: str = "Qwen/Qwen3.5-0.8B", device: Optional[str] = None):
         self.model_id = model_id
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.hf_token = os.getenv("HF_TOKEN") or None
@@ -146,6 +174,9 @@ class SteamLLMInferenceBaseline:
         raw_output = self.tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
         tokens_per_sec = len(new_tokens) / max(elapsed, 1e-4)
 
+        # Measure RAM & VRAM immediately after output generation
+        ram_usage = get_current_ram_usage()
+
         parsed_json = extract_json_payload(raw_output)
         is_valid, validated_scores = validate_vibe_scores(parsed_json)
 
@@ -156,54 +187,61 @@ class SteamLLMInferenceBaseline:
             "is_valid_json": is_valid,
             "scores": validated_scores,
             "latency_seconds": round(elapsed, 3),
-            "tokens_per_sec": round(tokens_per_sec, 1)
+            "tokens_per_sec": round(tokens_per_sec, 1),
+            "ram_usage": ram_usage
         }
 
 
 def run_inference_baseline(
-    model_id: str = "Qwen/Qwen2.5-0.5B-Instruct",
+    model_id: str = "Qwen/Qwen3.5-0.8B",
     num_samples: int = 3
 ):
-    """
-    Runs qualitative baseline inference on real Steam dataset examples.
-    """
     print(f"\n=======================================================")
     print(f"   Steam Hit Predictor: LLM Inference Baseline        ")
+    print(f"   Model: {model_id}                                   ")
     print(f"=======================================================\n")
 
-    # Load Steam games and descriptions
-    steam_path = "raw_data/steam.csv"
-    desc_path = "raw_data/steam_description_data.csv"
+    # Load cleaned descriptions and tabular metadata
+    cleaned_desc_path = "cleaned_data/steam_descriptions_cleaned.csv"
+    train_split_path = "cleaned_data/train.csv"
 
-    if not (os.path.exists(steam_path) and os.path.exists(desc_path)):
-        raise FileNotFoundError(f"Missing {steam_path} or {desc_path} in raw_data/")
-
-    df_steam = pd.read_csv(steam_path)
-    df_desc = pd.read_csv(desc_path)
-    df_merged = pd.merge(df_steam, df_desc, left_on="appid", right_on="steam_appid")
+    if os.path.exists(cleaned_desc_path) and os.path.exists(train_split_path):
+        df_desc = pd.read_csv(cleaned_desc_path)
+        df_steam = pd.read_csv(train_split_path)
+        df_merged = pd.merge(df_steam, df_desc, left_on="appid", right_on="steam_appid")
+    else:
+        # Fallback to raw data
+        df_steam = pd.read_csv("raw_data/steam.csv")
+        df_desc = pd.read_csv("raw_data/steam_description_data.csv")
+        df_merged = pd.merge(df_steam, df_desc, left_on="appid", right_on="steam_appid")
+        df_merged["clean_description"] = df_merged.get("short_description", "")
 
     baseline = SteamLLMInferenceBaseline(model_id=model_id)
 
-    # Pick diverse sample games across genres
+    # Pick sample games across genres
     sample_appids = [10, 400, 570]  # Counter-Strike, Portal, Dota 2
     samples = df_merged[df_merged["appid"].isin(sample_appids)]
     
     if len(samples) < num_samples:
         samples = df_merged.head(num_samples)
 
-    print("\n--- Running Baseline Inference on Steam Sample Games ---")
+    print("\n--- Running Baseline Inference with RAM Tracking ---")
     for idx, row in samples.iterrows():
         title = row["name"]
         genres = row["genres"]
-        desc = row.get("short_description") or row.get("detailed_description") or ""
+        desc = row.get("clean_description") or row.get("short_description") or ""
         
         print(f"\nEvaluating Game: '{title}' ({genres})")
         res = baseline.predict(title, genres, desc)
+        mem = res["ram_usage"]
         
-        print(f"  * Latency:        {res['latency_seconds']}s ({res['tokens_per_sec']} tok/s)")
-        print(f"  * Valid JSON:     {res['is_valid_json']}")
-        print(f"  * Extracted Vibe: {res['scores']}")
-        print(f"  * Raw Generation: {res['raw_output']}")
+        print(f"  * Latency:          {res['latency_seconds']}s ({res['tokens_per_sec']} tok/s)")
+        print(f"  * Valid JSON:       {res['is_valid_json']}")
+        print(f"  * Extracted Vibe:   {res['scores']}")
+        print(f"  * Process RAM (RSS):{mem['process_ram_gb']} GB")
+        print(f"  * System RAM Used:  {mem['system_ram_used_gb']} GB / {mem['system_ram_total_gb']} GB ({mem['system_ram_percent']}%)")
+        print(f"  * GPU VRAM Alloc:   {mem['gpu_vram_allocated_gb']} GB (Reserved: {mem['gpu_vram_reserved_gb']} GB)")
+        print(f"  * Raw Generation:   {res['raw_output']}")
 
     print("\n=======================================================")
     print("Inference Baseline completed successfully!")
@@ -212,7 +250,7 @@ def run_inference_baseline(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Steam Hit Predictor - LLM Inference Baseline")
-    parser.add_argument("--model_id", type=str, default="Qwen/Qwen2.5-0.5B-Instruct", help="Hugging Face Model ID")
+    parser.add_argument("--model_id", type=str, default="Qwen/Qwen3.5-0.8B", help="Hugging Face Model ID")
     parser.add_argument("--num_samples", type=int, default=3, help="Number of qualitative sample games to evaluate")
     args = parser.parse_args()
 

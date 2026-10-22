@@ -1,0 +1,26 @@
+# --- Machine Learning & Data Processing ---
+numpy>=1.24.0
+pandas>=2.0.0
+scikit-learn>=1.3.0
+xgboost>=2.0.0
+psutil>=5.9.0
+python-dotenv>=1.0.0
+
+# --- Deep Learning & Hugging Face LLM Pipeline ---
+torch>=2.1.0
+transformers>=4.40.0
+accelerate>=0.28.0
+peft>=0.10.0
+trl>=0.8.0
+bitsandbytes>=0.43.0
+datasets>=2.18.0
+huggingface-hub>=0.22.0
+
+# --- FastAPI Backend Server ---
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+pydantic>=2.6.0
+
+# --- Testing & Quality Assurance ---
+pytest>=8.0.0
+httpx>=0.27.0

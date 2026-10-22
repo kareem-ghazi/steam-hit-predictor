@@ -1,241 +1,215 @@
 {
   "zero_shot": {
-    "total_samples": 5,
-    "valid_json_count": 5,
+    "total_samples": 4,
+    "valid_json_count": 4,
     "validity_rate": 100.0,
-    "avg_latency_sec": 2.993,
+    "accuracy_rate": 66.7,
+    "mean_absolute_error": 1.62,
+    "avg_latency_sec": 6.717,
     "runs": [
       {
-        "raw_output": "{\n  \"hype_score\": 9.5,\n  \"story_score\": 8.5,\n  \"nostalgia_score\": 7.5\n}",
+        "raw_output": "```json\n{\n  \"hype_score\": 9.5,\n  \"story_score\": 7.0,\n  \"nostalgia_score\": 8.5\n}\n```",
         "parsed": {
           "hype_score": 9.5,
-          "story_score": 8.5,
-          "nostalgia_score": 7.5
+          "story_score": 7.0,
+          "nostalgia_score": 8.5
         },
         "is_valid": true,
         "scores": {
           "hype_score": 9.5,
-          "story_score": 8.5,
-          "nostalgia_score": 7.5
+          "story_score": 7.0,
+          "nostalgia_score": 8.5
         },
-        "latency": 3.814084529876709,
-        "game": "Counter-Strike"
+        "latency": 7.58033013343811,
+        "game": "Dota 2",
+        "mae": 1.83,
+        "accuracy_pct": 66.7
       },
       {
-        "raw_output": "{\n  \"hype_score\": 9.5,\n  \"story_score\": 8.5,\n  \"nostalgia_score\": 7.5\n}",
+        "raw_output": "```json\n{\n  \"hype_score\": 6.5,\n  \"story_score\": 5.0,\n  \"nostalgia_score\": 4.0\n}\n```",
         "parsed": {
-          "hype_score": 9.5,
-          "story_score": 8.5,
-          "nostalgia_score": 7.5
+          "hype_score": 6.5,
+          "story_score": 5.0,
+          "nostalgia_score": 4.0
         },
         "is_valid": true,
         "scores": {
-          "hype_score": 9.5,
-          "story_score": 8.5,
-          "nostalgia_score": 7.5
+          "hype_score": 6.5,
+          "story_score": 5.0,
+          "nostalgia_score": 4.0
         },
-        "latency": 2.841817855834961,
-        "game": "Portal"
+        "latency": 5.918238878250122,
+        "game": "Darwinia",
+        "mae": 1.67,
+        "accuracy_pct": 66.7
       },
       {
-        "raw_output": "{\n  \"hype_score\": 9.5,\n  \"story_score\": 8.5,\n  \"nostalgia_score\": 7.5\n}",
+        "raw_output": "```json\n{\n  \"hype_score\": 6.5,\n  \"story_score\": 5.0,\n  \"nostalgia_score\": 4.0\n}\n```",
         "parsed": {
-          "hype_score": 9.5,
-          "story_score": 8.5,
-          "nostalgia_score": 7.5
+          "hype_score": 6.5,
+          "story_score": 5.0,
+          "nostalgia_score": 4.0
         },
         "is_valid": true,
         "scores": {
-          "hype_score": 9.5,
-          "story_score": 8.5,
-          "nostalgia_score": 7.5
+          "hype_score": 6.5,
+          "story_score": 5.0,
+          "nostalgia_score": 4.0
         },
-        "latency": 2.794043779373169,
-        "game": "Dota 2"
+        "latency": 6.7952399253845215,
+        "game": "Killing Floor",
+        "mae": 1.5,
+        "accuracy_pct": 66.7
       },
       {
-        "raw_output": "{\n  \"hype_score\": 9.5,\n  \"story_score\": 8.5,\n  \"nostalgia_score\": 7.5\n}",
+        "raw_output": "```json\n{\n  \"hype_score\": 9.5,\n  \"story_score\": 7.0,\n  \"nostalgia_score\": 8.5\n}\n```",
         "parsed": {
           "hype_score": 9.5,
-          "story_score": 8.5,
-          "nostalgia_score": 7.5
+          "story_score": 7.0,
+          "nostalgia_score": 8.5
         },
         "is_valid": true,
         "scores": {
           "hype_score": 9.5,
-          "story_score": 8.5,
-          "nostalgia_score": 7.5
+          "story_score": 7.0,
+          "nostalgia_score": 8.5
         },
-        "latency": 2.7527027130126953,
-        "game": "Killing Floor"
-      },
-      {
-        "raw_output": "{\n  \"hype_score\": 9.5,\n  \"story_score\": 7.5,\n  \"nostalgia_score\": 6.5\n}",
-        "parsed": {
-          "hype_score": 9.5,
-          "story_score": 7.5,
-          "nostalgia_score": 6.5
-        },
-        "is_valid": true,
-        "scores": {
-          "hype_score": 9.5,
-          "story_score": 7.5,
-          "nostalgia_score": 6.5
-        },
-        "latency": 2.7622992992401123,
-        "game": "Darwinia"
+        "latency": 6.57426643371582,
+        "game": "Counter-Strike",
+        "mae": 1.5,
+        "accuracy_pct": 66.7
       }
     ]
   },
   "few_shot": {
-    "total_samples": 5,
-    "valid_json_count": 5,
+    "total_samples": 4,
+    "valid_json_count": 4,
     "validity_rate": 100.0,
-    "avg_latency_sec": 2.284,
+    "accuracy_rate": 75.0,
+    "mean_absolute_error": 1.38,
+    "avg_latency_sec": 4.482,
     "runs": [
       {
-        "raw_output": "{\"hype_score\": 6.5, \"story_score\": 7.0, \"nostalgia_score\": 8.0}",
+        "raw_output": "{\"hype_score\": 8.5, \"story_score\": 7.5, \"nostalgia_score\": 8.0}",
         "parsed": {
-          "hype_score": 6.5,
-          "story_score": 7.0,
-          "nostalgia_score": 8.0
-        },
-        "is_valid": true,
-        "scores": {
-          "hype_score": 6.5,
-          "story_score": 7.0,
-          "nostalgia_score": 8.0
-        },
-        "latency": 2.296560049057007,
-        "game": "Counter-Strike"
-      },
-      {
-        "raw_output": "{\"hype_score\": 6.5, \"story_score\": 7.0, \"nostalgia_score\": 8.0}",
-        "parsed": {
-          "hype_score": 6.5,
-          "story_score": 7.0,
-          "nostalgia_score": 8.0
-        },
-        "is_valid": true,
-        "scores": {
-          "hype_score": 6.5,
-          "story_score": 7.0,
-          "nostalgia_score": 8.0
-        },
-        "latency": 2.13942813873291,
-        "game": "Portal"
-      },
-      {
-        "raw_output": "{\"hype_score\": 6.5, \"story_score\": 7.5, \"nostalgia_score\": 8.0}",
-        "parsed": {
-          "hype_score": 6.5,
+          "hype_score": 8.5,
           "story_score": 7.5,
           "nostalgia_score": 8.0
         },
         "is_valid": true,
         "scores": {
-          "hype_score": 6.5,
+          "hype_score": 8.5,
           "story_score": 7.5,
           "nostalgia_score": 8.0
         },
-        "latency": 2.2479796409606934,
-        "game": "Dota 2"
+        "latency": 4.281836986541748,
+        "game": "Dota 2",
+        "mae": 1.83,
+        "accuracy_pct": 66.7
       },
       {
-        "raw_output": "{\"hype_score\": 7.0, \"story_score\": 7.5, \"nostalgia_score\": 8.0}",
+        "raw_output": "{\"hype_score\": 7.0, \"story_score\": 6.5, \"nostalgia_score\": 7.5}",
         "parsed": {
           "hype_score": 7.0,
-          "story_score": 7.5,
-          "nostalgia_score": 8.0
+          "story_score": 6.5,
+          "nostalgia_score": 7.5
         },
         "is_valid": true,
         "scores": {
           "hype_score": 7.0,
-          "story_score": 7.5,
-          "nostalgia_score": 8.0
+          "story_score": 6.5,
+          "nostalgia_score": 7.5
         },
-        "latency": 2.31362247467041,
-        "game": "Killing Floor"
+        "latency": 4.445669174194336,
+        "game": "Darwinia",
+        "mae": 0.5,
+        "accuracy_pct": 100.0
       },
       {
-        "raw_output": "{\"hype_score\": 6.5, \"story_score\": 7.5, \"nostalgia_score\": 8.0}",
+        "raw_output": "{\"hype_score\": 7.0, \"story_score\": 8.0, \"nostalgia_score\": 6.5}",
         "parsed": {
-          "hype_score": 6.5,
-          "story_score": 7.5,
-          "nostalgia_score": 8.0
+          "hype_score": 7.0,
+          "story_score": 8.0,
+          "nostalgia_score": 6.5
         },
         "is_valid": true,
         "scores": {
-          "hype_score": 6.5,
-          "story_score": 7.5,
-          "nostalgia_score": 8.0
+          "hype_score": 7.0,
+          "story_score": 8.0,
+          "nostalgia_score": 6.5
         },
-        "latency": 2.4202144145965576,
-        "game": "Darwinia"
+        "latency": 4.601978302001953,
+        "game": "Killing Floor",
+        "mae": 1.5,
+        "accuracy_pct": 66.7
+      },
+      {
+        "raw_output": "{\"hype_score\": 9.0, \"story_score\": 8.0, \"nostalgia_score\": 8.5}",
+        "parsed": {
+          "hype_score": 9.0,
+          "story_score": 8.0,
+          "nostalgia_score": 8.5
+        },
+        "is_valid": true,
+        "scores": {
+          "hype_score": 9.0,
+          "story_score": 8.0,
+          "nostalgia_score": 8.5
+        },
+        "latency": 4.598723411560059,
+        "game": "Counter-Strike",
+        "mae": 1.67,
+        "accuracy_pct": 66.7
       }
     ]
   },
   "chain_of_thought": {
-    "total_samples": 5,
-    "valid_json_count": 2,
-    "validity_rate": 40.0,
-    "avg_latency_sec": 12.586,
+    "total_samples": 4,
+    "valid_json_count": 0,
+    "validity_rate": 0.0,
+    "accuracy_rate": 0.0,
+    "mean_absolute_error": 5.0,
+    "avg_latency_sec": 27.708,
     "runs": [
       {
-        "raw_output": "```json\n{\n  \"hype_score\": 0,\n  \"story_score\": 8,\n  \"nostalgia_score\": 7\n}\n```\n\n**Step-by-Step Reasoning:**\n\n1. **Story & Lore (Narrative Depth):**\n   - The game is designed around a highly immersive narrative that players can customize and adapt to their own personal storylines. This level of freedom allows for deep character development and emotional investment from players.\n   - The game's lore includes detailed information about the game's history, characters, and key moments, which adds to its replayability and provides a sense of continuity between different player experiences.\n\n2. **Community & Virality (Hype Potential):**\n   - The game has a large and active community, with numerous forums, social media channels, and dedicated servers where players share strategies, tips, and achievements.\n   - The game's popularity makes it easy for players to spread word of mouth, leading to viral content and increased",
-        "parsed": {
-          "hype_score": 0,
-          "story_score": 8,
-          "nostalgia_score": 7
-        },
-        "is_valid": true,
-        "scores": {
-          "hype_score": 0.0,
-          "story_score": 8.0,
-          "nostalgia_score": 7.0
-        },
-        "latency": 14.938110828399658,
-        "game": "Counter-Strike"
-      },
-      {
-        "raw_output": "Step 1: Story & Lore (Narrative Depth)\n- The game's narrative revolves around the protagonist, Dr. Elena Vespera, who discovers a portal to another dimension. As she navigates this portal, she uncovers secrets about her own past and the origins of the Aperture Science Laboratories. This story is complex and engaging, with elements that keep players invested throughout the game.\n\nFinal Score: 8/10\n\nStep 2: Community & Virality (Hype Potential)\n- Portal is known for its retro and heritage appeal, which makes it appealing to fans of classic gaming franchises like Space Invaders or Pac-Man. The game's retro aesthetic and nostalgic feel make it a hit among those who enjoy these genres. Additionally, the game's lore and characters have gained a cult following, making it a platform for community engagement and sharing.\n\nFinal Score: 9/10\n\nStep 3: Retro / Heritage (Nostalgia Appeal)\n- Portal is indeed",
+        "raw_output": "Reasoning:\n\n1. **Story & Lore (Narrative depth)**:\n   The core premise of *Dota 2* is built on a foundational mythos that has been central to the game's identity for decades. It relies on a rich, interconnected lore system where heroes are not just characters but entities with distinct histories, motivations, and \"destinations\" (the \"Destinations\" system). This creates a sense of deep narrative depth and emotional stakes. The lore is expansive, allowing for complex character arcs and a sense of a larger world beyond the game's immediate scope. However, the narrative can sometimes feel somewhat repetitive or rely heavily on the \"Destinations\" mechanic to drive plot, which can limit the sheer depth of the storytelling compared to games with more traditional, character-driven narratives.\n\n2. **Community & Virality (Hype potential)**:\n   *Dota 2* is arguably the most successful free-to-play (F2P) game in history",
         "parsed": null,
         "is_valid": false,
         "scores": {},
-        "latency": 14.520541429519653,
-        "game": "Portal"
+        "latency": 27.361225366592407,
+        "game": "Dota 2",
+        "mae": 5.0,
+        "accuracy_pct": 0.0
       },
       {
-        "raw_output": "```json\n{\n  \"hype_score\": 9.5,\n  \"story_score\": 8.5,\n  \"nostalgia_score\": 7.5\n}\n```",
-        "parsed": {
-          "hype_score": 9.5,
-          "story_score": 8.5,
-          "nostalgia_score": 7.5
-        },
-        "is_valid": true,
-        "scores": {
-          "hype_score": 9.5,
-          "story_score": 8.5,
-          "nostalgia_score": 7.5
-        },
-        "latency": 2.950015068054199,
-        "game": "Dota 2"
-      },
-      {
-        "raw_output": "Step 1: Story & Lore (Narrative Depth)\n- The story is centered around a group of survivors who must work together to survive a mysterious event that has left them stranded on a remote island. The narrative is rich with suspense, action, and exploration, providing a compelling backdrop for the game's core mechanics.\n- This aspect contributes significantly to the overall gaming experience, making it more engaging and immersive.\n\nStep 2: Community & Virality (Hype Potential)\n- The game features a large community of players who can share their experiences and tips, creating a sense of camaraderie and excitement among the players.\n- Additionally, the game offers retro elements such as classic games from the 80s and 90s, which can attract fans of those genres and create a nostalgic atmosphere.\n- These factors contribute to the game's viral potential by fostering a sense of community and encouraging others to play the game.\n\nStep 3: Retro / Heritage (Nostalgia Appeal)",
+        "raw_output": "Reasoning:\n\n1. **Story & Lore (Narrative depth)**:\n   *   **Core Concept**: *Darwinia* is a strategy game that blends the mechanics of a real-time strategy (RTS) with a narrative-driven exploration. The core premise revolves around a fictional species of \"Darwinians\" who are genetically engineered to be the ultimate predators, capable of evolving and adapting to their environment.\n   *   **Narrative Depth**: The story is built around the tension between the harsh, industrialized reality of the planet and the desperate, desperate need of the Darwinians to survive. The narrative arc likely involves the evolution of the species, the discovery of new resources, and the eventual confrontation with a new threat or a moral dilemma regarding their existence.\n   *   **Lore**: The lore is dense and atmospheric, focusing on the history of the species, the environmental challenges they face, and the philosophical implications of their existence. It feels less like a standard",
         "parsed": null,
         "is_valid": false,
         "scores": {},
-        "latency": 14.936533451080322,
-        "game": "Killing Floor"
+        "latency": 27.907516717910767,
+        "game": "Darwinia",
+        "mae": 5.0,
+        "accuracy_pct": 0.0
       },
       {
-        "raw_output": "Step 1: Story & Lore (Narrative Depth)\n- The game's narrative is centered around the protagonist, a young sprite named Darwin, who must navigate a complex world filled with both new and old challenges. The story follows Darwin as he learns to adapt to his surroundings and make decisions that affect the fate of his tribe. This narrative depth adds layers of complexity and intrigue to the gameplay experience.\n- The story is set against the backdrop of a futuristic world where traditional storytelling methods have been replaced by digital technology. This setting provides a unique perspective on the game's themes and allows for creative interpretation of the story.\n\nStep 2: Community & Virality (Hype Potential)\n- The game has a large and active community of players who share their experiences and strategies. This communal aspect makes it easy for fans to spread the word about the game and attract new players.\n- The game's graphical style is reminiscent of classic 80s games like Tron and Defender, which can be seen as",
+        "raw_output": "Reasoning:\n\n1.  **Story & Lore (Narrative depth):**\n    The core premise of *Killing Floor* is a direct, unfiltered take on the brutal reality of the real-world \"Killing Floor\" (a notorious underground fighting gym in the UK). The narrative is built on a foundation of gritty realism, focusing on the physical toll of the sport, the isolation of the underground environment, and the psychological pressure of being a \"killer.\"\n    *   **Lore Depth:** The story is not just about the sport; it's about the culture, the hierarchy, the specific mechanics of the gym, and the human cost of the violence. It creates a strong sense of immersion where the audience feels like they are witnessing the raw, unfiltered brutality of the sport. The lore is dense, offering deep dives into the history of the gym and the specific rules that define the genre.\n    *   **Narrative Depth:** The story is told through a mix",
         "parsed": null,
         "is_valid": false,
         "scores": {},
-        "latency": 15.583897829055786,
-        "game": "Darwinia"
+        "latency": 27.482099771499634,
+        "game": "Killing Floor",
+        "mae": 5.0,
+        "accuracy_pct": 0.0
+      },
+      {
+        "raw_output": "Reasoning:\n\n1. **Story & Lore (Narrative depth)**:\n   - *Counter-Strike* is a game that operates on a \"meta\" level, meaning it is not a traditional narrative-driven shooter where the player's actions directly influence the plot or the world's history. Instead, it is a simulation of a specific, often fictional, world (often a dystopian or sci-fi setting like a post-apocalyptic city or a futuristic metropolis).\n   - The narrative is heavily dependent on the \"lore\" of the specific game universe. While the core mechanics (the \"game\") are universal, the story is deeply tied to the specific lore of the game being played.\n   - The \"story\" is essentially the history of the game itself\u2014the evolution of the game engine, the development of the weapons, the design of the map, and the cultural impact of the game. It is a retrospective history rather than a forward-looking narrative.\n   - This makes",
+        "parsed": null,
+        "is_valid": false,
+        "scores": {},
+        "latency": 28.0828697681427,
+        "game": "Counter-Strike",
+        "mae": 5.0,
+        "accuracy_pct": 0.0
       }
     ]
   }

@@ -1,9 +1,10 @@
 import os
 import re
+import html
 import pickle
 import numpy as np
 import pandas as pd
-from typing import Tuple
+from typing import Tuple, Optional
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OrdinalEncoder
 
@@ -45,14 +46,82 @@ def load_dataset(file_path: str = "raw_data/steam.csv") -> pd.DataFrame:
     return pd.read_csv(file_path)
 
 
+def clean_html_text(text: Optional[str]) -> str:
+    """
+    Cleans raw HTML descriptions:
+    - Removes HTML tags (e.g. <br>, <p>, <strong>, <img>, etc.)
+    - Unescapes HTML entities (&amp;, &quot;, &#39;, &nbsp;)
+    - Normalizes multiple spaces and tabs to single space
+    """
+    if not text or pd.isna(text):
+        return ""
+    text = str(text)
+    # Unescape HTML entities first
+    text = html.unescape(text)
+    # Replace <br> and paragraph breaks with newline or space
+    text = re.sub(r"<(?:br|p|div|h[1-6]|li)\s*/?>", " ", text, flags=re.IGNORECASE)
+    # Strip all remaining HTML tags
+    text = re.sub(r"<[^>]+>", " ", text)
+    # Normalize excessive whitespace
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def clean_and_prepare_descriptions(
+    desc_path: str = "raw_data/steam_description_data.csv",
+    save_path: str = "cleaned_data/steam_descriptions_cleaned.csv"
+) -> pd.DataFrame:
+    """
+    Loads, cleans, and deduplicates the Steam descriptions dataset.
+    Creates a unified 'clean_description' column from short_description,
+    about_the_game, and detailed_description.
+    """
+    if not os.path.exists(desc_path):
+        print(f"Warning: Description file {desc_path} not found. Skipping description merge.")
+        return pd.DataFrame(columns=["steam_appid", "clean_description"])
+    
+    print("Cleaning and preparing Steam descriptions...")
+    df_desc = pd.read_csv(desc_path)
+    
+    # Clean HTML across description columns
+    df_desc["clean_short"] = df_desc["short_description"].apply(clean_html_text)
+    df_desc["clean_about"] = df_desc["about_the_game"].apply(clean_html_text)
+    df_desc["clean_detailed"] = df_desc["detailed_description"].apply(clean_html_text)
+    
+    # Prioritize clean_short, fallback to truncated clean_about or clean_detailed
+    def select_best_description(row) -> str:
+        short = row["clean_short"]
+        if short and len(short) > 25:
+            return short
+        about = row["clean_about"]
+        if about and len(about) > 25:
+            return about[:600]
+        detailed = row["clean_detailed"]
+        if detailed and len(detailed) > 25:
+            return detailed[:600]
+        return "No description available."
+        
+    df_desc["clean_description"] = df_desc.apply(select_best_description, axis=1)
+    
+    # Save cleaned descriptions table
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    export_df = df_desc[["steam_appid", "clean_description", "clean_short"]].rename(
+        columns={"clean_short": "short_description_cleaned"}
+    )
+    export_df.to_csv(save_path, index=False)
+    print(f"Cleaned descriptions saved to: {save_path} ({len(export_df)} records)")
+    
+    return export_df
+
+
 def clean_dataset(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Performs thorough data cleaning:
+    Performs thorough data cleaning on the tabular dataset:
     1. Removes duplicate rows and duplicates by appid.
-    2. Drops rows with null or empty essential fields (name, genres, platforms).
+    2. Cleans text columns (name, developer, publisher, genres, platforms).
     3. Imputes missing developer and publisher values.
-    4. Fixes inconsistent formatting: strips whitespace, trims & sorts delimited items.
-    5. Validates non-negative numerical values (price, ratings).
+    4. Fixes inconsistent formatting: strips whitespace, canonicalizes delimited tokens.
+    5. Validates non-negative numerical values (price, ratings, english flag).
     """
     df = df.copy()
     initial_count = len(df)
@@ -66,7 +135,7 @@ def clean_dataset(df: pd.DataFrame) -> pd.DataFrame:
     for col in text_cols:
         if col in df.columns:
             df[col] = df[col].astype(str).str.strip()
-    
+            
     # Standardize semicolon-separated fields (lowercase, strip, sort tokens for canonical order)
     delimited_cols = ["platforms", "categories", "genres", "steamspy_tags"]
     for col in delimited_cols:
@@ -84,7 +153,13 @@ def clean_dataset(df: pd.DataFrame) -> pd.DataFrame:
     df["developer"] = df["developer"].replace({"nan": "Unknown", "": "Unknown"}).fillna("Unknown")
     df["publisher"] = df["publisher"].replace({"nan": "Unknown", "": "Unknown"}).fillna(df["developer"])
     
-    # 4. Numeric validation and clamping
+    # 4. English column validation (ensure 0 or 1 integer flag)
+    if "english" in df.columns:
+        df["english"] = pd.to_numeric(df["english"], errors="coerce").fillna(1).clip(0, 1).astype(int)
+    else:
+        df["english"] = 1
+        
+    # 5. Numeric validation and non-negative clamping
     numeric_cols = ["price", "achievements", "positive_ratings", "negative_ratings", "required_age"]
     for col in numeric_cols:
         if col in df.columns:
@@ -92,7 +167,7 @@ def clean_dataset(df: pd.DataFrame) -> pd.DataFrame:
             df[col] = df[col].apply(lambda x: max(0.0, float(x)))
             
     cleaned_count = len(df)
-    print(f"Data Cleaning: Reduced rows from {initial_count} to {cleaned_count} (removed {initial_count - cleaned_count} invalid/duplicate rows).")
+    print(f"Data Cleaning: Main dataset processed ({cleaned_count} valid records).")
     return df
 
 
@@ -106,7 +181,6 @@ def engineer_features(df: pd.DataFrame, include_mock_llm: bool = True, seed: int
     """
     df = df.copy()
     
-    # 1. Total reviews & approval rate
     total_reviews = df["positive_ratings"] + df["negative_ratings"]
     df["total_reviews"] = total_reviews
     
@@ -116,20 +190,17 @@ def engineer_features(df: pd.DataFrame, include_mock_llm: bool = True, seed: int
         0.0
     )
     
-    # 2. Rating text matching Steam classes
     df["rating_text"] = [
         calculate_steam_rating_text(ar, tr)
         for ar, tr in zip(df["approval_rate"], df["total_reviews"])
     ]
     
-    # 3. Target variable: is_hit (1 if approval_rate >= 0.80 and total_reviews >= 50, else 0)
     df["is_hit"] = np.where(
         (df["approval_rate"] >= 0.80) & (df["total_reviews"] >= 50),
         1,
         0
     )
     
-    # 4. Mock placeholders for LLM features (hype_score, story_score, nostalgia_score on a 1.0 to 10.0 scale)
     if include_mock_llm:
         rng = np.random.RandomState(seed)
         n = len(df)
@@ -158,7 +229,7 @@ def apply_ordinal_encoding(
     test_df: pd.DataFrame
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, OrdinalEncoder]:
     """
-    Fits an OrdinalEncoder on training set 'genres' and 'platforms' columns
+    Fits an OrdinalEncoder on training set 'genres', 'platforms', and 'publisher' columns
     and transforms train, valid, and test sets.
     Preserves original string columns for UI and similarity matching.
     """
@@ -167,13 +238,14 @@ def apply_ordinal_encoding(
         unknown_value=-1
     )
     
-    # Fit strictly on train to avoid data leakage
-    encoder.fit(train_df[["genres", "platforms"]])
+    # Fit strictly on train set to prevent data leakage
+    encoder.fit(train_df[["genres", "platforms", "publisher"]])
     
     for split_df in [train_df, valid_df, test_df]:
-        encoded_vals = encoder.transform(split_df[["genres", "platforms"]])
+        encoded_vals = encoder.transform(split_df[["genres", "platforms", "publisher"]])
         split_df["genres_encoded"] = encoded_vals[:, 0].astype(float)
         split_df["platforms_encoded"] = encoded_vals[:, 1].astype(float)
+        split_df["publisher_encoded"] = encoded_vals[:, 2].astype(float)
         
     return train_df, valid_df, test_df, encoder
 
@@ -189,7 +261,8 @@ def split_and_save_data(
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, OrdinalEncoder]:
     """
     Splits the cleaned dataset into train (80%), valid (10%), and test (10%) sets
-    using stratified sampling on 'is_hit', applies Ordinal Encoding, and saves splits to output_dir.
+    using stratified sampling on 'is_hit', applies Ordinal Encoding on genres, platforms,
+    and publisher, and saves splits to output_dir.
     """
     os.makedirs(output_dir, exist_ok=True)
     if encoder_save_path:
@@ -213,7 +286,7 @@ def split_and_save_data(
         stratify=temp_df["is_hit"]
     )
     
-    # Apply Ordinal Encoding on genres & platforms
+    # Apply Ordinal Encoding on genres, platforms & publisher
     train_df, valid_df, test_df, encoder = apply_ordinal_encoding(train_df, valid_df, test_df)
     
     # Save encoder
@@ -241,20 +314,34 @@ def split_and_save_data(
 
 def prepare_data(
     raw_path: str = "raw_data/steam.csv",
+    desc_path: str = "raw_data/steam_description_data.csv",
     output_dir: str = "cleaned_data"
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, OrdinalEncoder]:
     """
     Full pipeline execution:
-    1. Loads raw dataset
-    2. Cleans duplicates, nulls, and canonicalizes formatting
-    3. Engineers approval_rate, rating_text, is_hit, and mock LLM features
-    4. Drops data leakage columns
-    5. Splits into train (80%), valid (10%), test (10%)
-    6. Fits & applies Ordinal Encoding on 'genres' and 'platforms'
-    7. Saves all splits to cleaned_data/
+    1. Loads raw dataset and cleans tabular fields
+    2. Cleans and prepares steam descriptions (HTML stripping, entity unescaping)
+    3. Merges clean descriptions with tabular data
+    4. Engineers approval_rate, rating_text, is_hit, and mock LLM features
+    5. Drops data leakage columns
+    6. Splits into train (80%), valid (10%), test (10%)
+    7. Fits & applies Ordinal Encoding on 'genres', 'platforms', and 'publisher'
+    8. Saves all splits and cleaned descriptions to cleaned_data/
     """
     df_raw = load_dataset(raw_path)
     df_clean = clean_dataset(df_raw)
+    
+    # Clean and merge descriptions
+    cleaned_desc_path = os.path.join(output_dir, "steam_descriptions_cleaned.csv")
+    df_desc_clean = clean_and_prepare_descriptions(desc_path, save_path=cleaned_desc_path)
+    if not df_desc_clean.empty and "steam_appid" in df_desc_clean.columns:
+        df_clean = pd.merge(df_clean, df_desc_clean[["steam_appid", "clean_description"]], left_on="appid", right_on="steam_appid", how="left")
+        df_clean["clean_description"] = df_clean["clean_description"].fillna("No description available.")
+        if "steam_appid" in df_clean.columns:
+            df_clean = df_clean.drop(columns=["steam_appid"])
+    else:
+        df_clean["clean_description"] = "No description available."
+        
     df_engineered = engineer_features(df_clean, include_mock_llm=True)
     df_leakage_free = drop_leakage_columns(df_engineered)
     
@@ -262,7 +349,9 @@ def prepare_data(
 
 
 if __name__ == "__main__":
-    print("--- Executing Data Cleaning, Engineering, Ordinal Encoding & Split Pipeline ---")
+    print("--- Executing Data Cleaning, Description Preparation, Ordinal Encoding & Split Pipeline ---")
     train_df, valid_df, test_df, encoder = prepare_data()
     print("\nSample Ordinal Encoded Features:")
-    print(train_df[["name", "genres", "genres_encoded", "platforms", "platforms_encoded", "price", "is_hit"]].head(5))
+    print(train_df[["name", "english", "publisher", "publisher_encoded", "genres_encoded", "platforms_encoded", "price", "is_hit"]].head(5))
+    print("\nSample Cleaned Description:")
+    print(train_df[["name", "clean_description"]].head(2).to_dict(orient="records"))

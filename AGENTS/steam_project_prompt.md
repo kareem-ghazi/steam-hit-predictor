@@ -17,22 +17,26 @@ Here is the architecture and directory structure we are building towards.
 
 ```text
 steam-hit-predictor/
+├── Dockerfile                   # Docker containerization definition
+├── requirements.txt             # Pinned project dependencies
 ├── raw_data/                    # Stores the original kaggle dataset
-│   └── steam.csv                
+│   ├── steam.csv
+│   └── steam_description_data.csv
 ├── cleaned_data/                # Cleaned & stratified dataset splits
-│   ├── train.csv                # 80% train split
+│   ├── steam_descriptions_cleaned.csv
+│   ├── train.csv                # 80% train split (with english & publisher_encoded)
 │   ├── valid.csv                # 10% validation split
 │   └── test.csv                 # 10% test split
 ├── saved_models/                # Stores resulting model files
-│   ├── ml_models/               # XGBoost .pkl files
+│   ├── ml_models/               # XGBoost .pkl & OrdinalEncoder .pkl files
 │   └── llm_adapters/            # QLoRA weights
 ├── llm-pipeline/                
-│   ├── inference_baseline.py 
-│   ├── prompting_baseline.py 
+│   ├── inference_baseline.py    # Baseline inference with RAM tracking (Qwen3.5-0.8B)
+│   ├── prompting_baseline.py    # Zero-shot, Few-shot, CoT accuracy & validity benchmark
 │   └── qlora_training.py     
 ├── ml-pipeline/                 
-│   ├── data_prep.py       
-│   └── xgboost_train.py      
+│   ├── data_prep.py             # Tabular & HTML description cleaning, Ordinal Encoding
+│   └── xgboost_train.py         # XGBoost training with publisher & english features
 ├── backend/                     
 │   ├── main.py                  
 │   └── requirements.txt         
@@ -82,20 +86,21 @@ Please begin with Phase 1. Output the code, explain it briefly, and then output 
 #### Phase 1: Data Engineering & XGBoost Training (ml-pipeline)
 
 * [x] Load the `steam.csv` dataset from the `raw_data/` folder in `data_prep.py`.
-* [x] Clean dataset by removing duplicates, handling null values, and fixing formatting inconsistencies.
+* [x] Clean tabular dataset by removing duplicates, handling null values, and fixing formatting inconsistencies.
+* [x] Clean and prepare Steam descriptions (stripping HTML tags, unescaping HTML entities, normalizing text) and merge with tabular data.
 * [x] Engineer `approval_rate`: (Positive Ratings / Total Reviews).
 * [x] Engineer `rating_text`: Translate the `approval_rate` into text classes matching Steam's format (e.g., Overwhelmingly Positive, Very Positive, Mostly Positive, Mixed, Mostly Negative), taking total reviews into account.
 * [x] Engineer the target variable `is_hit`: 1 if `approval_rate` >= 0.80 and total reviews >= 50, else 0.
 * [x] Drop data leakage columns (positive/negative ratings, total reviews, approval_rate).
 * [x] Split the cleaned dataset into stratified train (80%), valid (10%), and test (10%) splits and save them as .csv files in `cleaned_data/`.
-* [x] Apply Ordinal Encoding to the `genres` and `platforms` columns and persist the encoder for training and inference.
-* [x] In `xgboost_train.py`, train an XGBoost Classifier using `cleaned_data/` for tabular classification with standard features (price, ordinal-encoded genres, ordinal-encoded platforms) alongside mock placeholders for LLM features (hype_score, story_score, nostalgia_score). Perform training with validation monitoring, compute holdout test accuracy/F1-score, and save the model as a `.pkl` file to `saved_models/ml_models/`.
+* [x] Apply Ordinal Encoding to `genres`, `platforms`, and `publisher` columns and persist the encoder for training and inference.
+* [x] In `xgboost_train.py`, train an XGBoost Classifier using `cleaned_data/` for tabular classification with standard features (price, english, ordinal-encoded genres, platforms, publisher) alongside mock placeholders for LLM features (hype_score, story_score, nostalgia_score). Perform training with validation monitoring, compute holdout test accuracy/F1-score, and save the model as a `.pkl` file to `saved_models/ml_models/`.
 
 #### Phase 2: LLM Baselines (llm-pipeline)
 
-* [x] Write `inference_baseline.py` to establish a working inference baseline, running the chosen local model (e.g., Llama-3-8B or Mistral) end-to-end on our task to produce a first qualitative result.
-
-* [x] Write `prompting_baseline.py` to establish a prompting baseline that records zero-shot, few-shot, and CoT results on the team's task against a small metric (e.g., parsing a valid JSON format for Hype, Story, and Nostalgia scores).
+* [x] Write `inference_baseline.py` to establish a working inference baseline, running `Qwen/Qwen3.5-0.8B` on GPU end-to-end to extract vibe scores, and measure process RAM, system RAM, and GPU VRAM after every output.
+* [x] Write `prompting_baseline.py` to establish a prompting baseline that records zero-shot, few-shot, and CoT results, measuring both JSON validity and accuracy (MAE and % within tolerance against ground-truth consensus).
+* [x] Add `requirements.txt` and `Dockerfile` for dependency management and containerized deployment.
 
 #### Phase 3: LLM Fine-Tuning & Main Build (llm-pipeline)
 
