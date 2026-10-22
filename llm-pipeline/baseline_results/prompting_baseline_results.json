@@ -5,7 +5,7 @@
     "validity_rate": 100.0,
     "accuracy_rate": 75.0,
     "mean_absolute_error": 1.58,
-    "avg_latency_sec": 5.694,
+    "avg_latency_sec": 7.936,
     "runs": [
       {
         "raw_output": "```json\n{\n  \"hype_score\": 9.5,\n  \"story_score\": 8.0,\n  \"nostalgia_score\": 9.0\n}\n```",
@@ -20,7 +20,7 @@
           "story_score": 8.0,
           "nostalgia_score": 9.0
         },
-        "latency": 7.765926361083984,
+        "latency": 7.254971027374268,
         "game": "Dota 2",
         "mae": 2.33,
         "accuracy_pct": 66.7
@@ -38,7 +38,7 @@
           "story_score": 7.0,
           "nostalgia_score": 8.0
         },
-        "latency": 5.172308444976807,
+        "latency": 6.453145742416382,
         "game": "Darwinia",
         "mae": 1.33,
         "accuracy_pct": 66.7
@@ -56,7 +56,7 @@
           "story_score": 6.0,
           "nostalgia_score": 7.0
         },
-        "latency": 5.833862066268921,
+        "latency": 10.452162265777588,
         "game": "Killing Floor",
         "mae": 0.83,
         "accuracy_pct": 100.0
@@ -74,7 +74,7 @@
           "story_score": 8.0,
           "nostalgia_score": 9.0
         },
-        "latency": 4.002631902694702,
+        "latency": 7.5857203006744385,
         "game": "Counter-Strike",
         "mae": 1.83,
         "accuracy_pct": 66.7
@@ -87,7 +87,7 @@
     "validity_rate": 100.0,
     "accuracy_rate": 75.0,
     "mean_absolute_error": 1.67,
-    "avg_latency_sec": 4.093,
+    "avg_latency_sec": 4.985,
     "runs": [
       {
         "raw_output": "{\"hype_score\": 8.5, \"story_score\": 7.5, \"nostalgia_score\": 9.0}",
@@ -102,7 +102,7 @@
           "story_score": 7.5,
           "nostalgia_score": 9.0
         },
-        "latency": 4.08338737487793,
+        "latency": 5.895598888397217,
         "game": "Dota 2",
         "mae": 2.17,
         "accuracy_pct": 66.7
@@ -120,7 +120,7 @@
           "story_score": 8.0,
           "nostalgia_score": 8.5
         },
-        "latency": 3.9121639728546143,
+        "latency": 4.679981470108032,
         "game": "Darwinia",
         "mae": 1.5,
         "accuracy_pct": 100.0
@@ -138,7 +138,7 @@
           "story_score": 7.5,
           "nostalgia_score": 7.0
         },
-        "latency": 4.0720415115356445,
+        "latency": 4.7996203899383545,
         "game": "Killing Floor",
         "mae": 1.33,
         "accuracy_pct": 66.7
@@ -156,7 +156,7 @@
           "story_score": 7.5,
           "nostalgia_score": 8.0
         },
-        "latency": 4.306197166442871,
+        "latency": 4.565833806991577,
         "game": "Counter-Strike",
         "mae": 1.67,
         "accuracy_pct": 66.7
@@ -169,7 +169,7 @@
     "validity_rate": 100.0,
     "accuracy_rate": 66.7,
     "mean_absolute_error": 1.83,
-    "avg_latency_sec": 13.735,
+    "avg_latency_sec": 17.005,
     "runs": [
       {
         "raw_output": "Reasoning:\n- Story: A dynamic narrative-driven experience where players evolve through a complex hero roster and strategic combat.\n- Hype: A massive, community-driven franchise with a unique free-to-play model and constant seasonal updates.\n- Nostalgia: A classic free-to-play strategy game that defined the early 2010s gaming landscape.\n```json\n{\"hype_score\": 9.0, \"story_score\": 8.0, \"nostalgia_score\": 9.0}\n```",
@@ -184,7 +184,7 @@
           "story_score": 8.0,
           "nostalgia_score": 9.0
         },
-        "latency": 14.053455591201782,
+        "latency": 22.82987880706787,
         "game": "Dota 2",
         "mae": 2.17,
         "accuracy_pct": 66.7
@@ -202,7 +202,7 @@
           "story_score": 8.0,
           "nostalgia_score": 9.0
         },
-        "latency": 13.986770629882812,
+        "latency": 15.745486974716187,
         "game": "Darwinia",
         "mae": 2.0,
         "accuracy_pct": 66.7
@@ -220,7 +220,7 @@
           "story_score": 7.5,
           "nostalgia_score": 9.0
         },
-        "latency": 13.805554389953613,
+        "latency": 15.162566423416138,
         "game": "Killing Floor",
         "mae": 1.67,
         "accuracy_pct": 66.7
@@ -238,7 +238,7 @@
           "story_score": 8.0,
           "nostalgia_score": 9.0
         },
-        "latency": 13.092735528945923,
+        "latency": 14.281651496887207,
         "game": "Counter-Strike",
         "mae": 1.5,
         "accuracy_pct": 66.7

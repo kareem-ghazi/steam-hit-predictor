@@ -318,7 +318,7 @@ def run_prompting_baseline(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Steam Hit Predictor - Prompting Baseline Evaluation")
     parser.add_argument("--model_id", type=str, default="Qwen/Qwen3.5-0.8B", help="Hugging Face Model ID")
-    parser.add_argument("--output_path", type=str, default="llm-pipeline/prompting_baseline_results.json", help="Output path")
+    parser.add_argument("--output_path", type=str, default="llm-pipeline/baseline_results/prompting_baseline_results.json", help="Output path")
     args = parser.parse_args()
 
     run_prompting_baseline(model_id=args.model_id, output_path=args.output_path)

@@ -317,7 +317,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Steam Hit Predictor - LLM Inference Baseline")
     parser.add_argument("--model_id", type=str, default="Qwen/Qwen3.5-0.8B", help="Hugging Face Model ID")
     parser.add_argument("--num_samples", type=int, default=3, help="Number of qualitative sample games to evaluate")
-    parser.add_argument("--output_path", type=str, default="llm-pipeline/inference_baseline_results.json", help="Output JSON path")
+    parser.add_argument("--output_path", type=str, default="llm-pipeline/baseline_results/inference_baseline_results.json", help="Output JSON path")
     args = parser.parse_args()
 
     run_inference_baseline(model_id=args.model_id, num_samples=args.num_samples, output_path=args.output_path)
