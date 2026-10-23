@@ -19,14 +19,18 @@ Here is the architecture and directory structure we are building towards.
 steam-hit-predictor/
 ├── Dockerfile                   # Docker containerization definition
 ├── requirements.txt             # Pinned project dependencies
-├── raw_data/                    # Stores the original kaggle dataset
-│   ├── steam.csv
-│   └── steam_description_data.csv
+├── raw_data/                    # Raw multi-dataset folder & unified merged files
+│   ├── steam.csv                # Unified merged tabular dataset (85,249 games, 18 columns)
+│   ├── steam_description_data.csv # Unified merged descriptions (85,249 games, 4 columns)
+│   ├── merge_datasets.py        # Harmonization & merge script
+│   ├── steam_games_cleaned/     # Original reference dataset
+│   ├── artermiloff_steam_games_dataset/ # Kaggle March 2025 dataset
+│   ├── fronkongames_steam_games_dataset/ # Kaggle complete archive
+│   └── crainbramp_steam_dataset_2025/ # Kaggle 2025 analytics (CSV-only package)
 ├── cleaned_data/                # Cleaned & stratified dataset splits
-│   ├── steam_descriptions_cleaned.csv
-│   ├── train.csv                # 80% train split (with english & publisher_encoded)
-│   ├── valid.csv                # 10% validation split
-│   └── test.csv                 # 10% test split
+│   ├── train.csv                # 80% train split (68,199 rows)
+│   ├── valid.csv                # 10% validation split (8,525 rows)
+│   └── test.csv                 # 10% test split (8,525 rows)
 ├── saved_models/                # Stores resulting model files
 │   ├── ml_models/               # XGBoost .pkl & OrdinalEncoder .pkl files
 │   └── llm_adapters/            # QLoRA weights

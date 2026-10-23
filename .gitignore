@@ -38,6 +38,7 @@ venv.bak/
 .python-version
 
 # Datasets & Data files
+raw_data/*
 raw_data/*.csv
 raw_data/*.zip
 raw_data/*.tar.gz
