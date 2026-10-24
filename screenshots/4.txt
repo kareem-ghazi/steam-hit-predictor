@@ -1,0 +1,59 @@
+=======================================================
+   Steam Hit Predictor: LLM Inference Baseline
+   Model: Qwen/Qwen3.5-0.8B
+=======================================================
+
+Initializing Steam LLM Baseline with model: 'Qwen/Qwen3.5-0.8B' on device: 'cuda'
+Loading weights: 100%|███████████████████████████████████████████████████████████████████████████████████████████████████████| 320/320 [00:01<00:00, 185.89it/s]
+Model and Tokenizer loaded successfully.
+
+--- Running Baseline Inference with RAM Tracking ---
+
+Evaluating Game: 'Awakening: The Goblin Kingdom Collector's Edition' (AppID: 695960, Genres: adventure;casual)
+[transformers] `causal_conv1d_fn` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `chunk_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
+[transformers] `causal_conv1d_update` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `fused_recurrent_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
+  * Latency:          7.275s (5.6 tok/s)
+  * Valid JSON:       True
+  * Extracted Vibe:   {'hype_score': 6.5, 'story_score': 7.0, 'nostalgia_score': 5.5}
+  * Process RAM (RSS):2.231 GB
+  * System RAM Used:  13.22 GB / 15.24 GB (86.8%)
+  * GPU VRAM Alloc:   1.409 GB (Reserved: 1.486 GB)
+  * Raw Generation:   {
+  "hype_score": 6.5,
+  "story_score": 7.0,
+  "nostalgia_score": 5.5
+}
+
+Evaluating Game: 'Peggle Extreme' (AppID: 3483, Genres: casual;free to play)
+  * Latency:          5.227s (7.8 tok/s)
+  * Valid JSON:       True
+  * Extracted Vibe:   {'hype_score': 8.5, 'story_score': 7.0, 'nostalgia_score': 6.5}
+  * Process RAM (RSS):2.231 GB
+  * System RAM Used:  13.28 GB / 15.24 GB (87.1%)
+  * GPU VRAM Alloc:   1.409 GB (Reserved: 1.486 GB)
+  * Raw Generation:   {
+  "hype_score": 8.5,
+  "story_score": 7.0,
+  "nostalgia_score": 6.5
+}
+
+Evaluating Game: 'Sweet Home 3: Look and Find Collector's Edition' (AppID: 3332690, Genres: casual)
+  * Latency:          5.491s (7.5 tok/s)
+  * Valid JSON:       True
+  * Extracted Vibe:   {'hype_score': 7.5, 'story_score': 6.0, 'nostalgia_score': 5.5}
+  * Process RAM (RSS):2.231 GB
+  * System RAM Used:  13.41 GB / 15.24 GB (88.0%)
+  * GPU VRAM Alloc:   1.409 GB (Reserved: 1.486 GB)
+  * Raw Generation:   {
+  "hype_score": 7.5,
+  "story_score": 6.0,
+  "nostalgia_score": 5.5
+}
+
+Saved inference baseline results JSON to: llm-pipeline/baseline_results/inference_baseline_results.json
+
+=======================================================
+Inference Baseline completed! Validity Rate: 100.0% | Avg Latency: 5.998s
+=======================================================

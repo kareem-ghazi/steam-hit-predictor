@@ -1,23 +1,51 @@
 {
   "model_id": "Qwen/Qwen3.5-0.8B",
   "device": "cuda",
-  "timestamp": "2026-10-22 21:19:19",
+  "timestamp": "2026-10-25 00:40:31",
   "total_samples": 3,
   "valid_json_count": 3,
   "validity_rate": 100.0,
-  "avg_latency_sec": 6.046,
-  "avg_tokens_per_sec": 6.8,
+  "avg_latency_sec": 5.998,
+  "avg_tokens_per_sec": 7.0,
   "ram_summary": {
-    "peak_process_ram_gb": 1.997,
+    "peak_process_ram_gb": 2.231,
     "peak_gpu_vram_allocated_gb": 1.409,
-    "latest_system_ram_percent": 79.0
+    "latest_system_ram_percent": 88.0
   },
   "runs": [
     {
-      "appid": 602930,
-      "game_name": "Wordlase",
-      "genres": "casual;indie",
-      "description_snippet": "Wordlase is a word-puzzle game. You need to compile words from the letters of offered one. For example, you can make words \"ant\" and \"potion\" from the letters of \"interpolation\". But you can't assembl...",
+      "appid": 695960,
+      "game_name": "Awakening: The Goblin Kingdom Collector's Edition",
+      "genres": "adventure;casual",
+      "description_snippet": "After overcoming the Dreamless Castle and Moonfell Wood, you have come to the rugged, mountainous snow-peaked Goblin Kingdom!",
+      "raw_output": "{\n  \"hype_score\": 6.5,\n  \"story_score\": 7.0,\n  \"nostalgia_score\": 5.5\n}",
+      "parsed_json": {
+        "hype_score": 6.5,
+        "story_score": 7.0,
+        "nostalgia_score": 5.5
+      },
+      "is_valid_json": true,
+      "scores": {
+        "hype_score": 6.5,
+        "story_score": 7.0,
+        "nostalgia_score": 5.5
+      },
+      "latency_seconds": 7.275,
+      "tokens_per_sec": 5.6,
+      "ram_usage": {
+        "process_ram_gb": 2.231,
+        "system_ram_used_gb": 13.22,
+        "system_ram_total_gb": 15.24,
+        "system_ram_percent": 86.8,
+        "gpu_vram_allocated_gb": 1.409,
+        "gpu_vram_reserved_gb": 1.486
+      }
+    },
+    {
+      "appid": 3483,
+      "game_name": "Peggle Extreme",
+      "genres": "casual;free to play",
+      "description_snippet": "Mayday! The Peggle Institute has been invaded by a host of other-worldly creatures. It's up to you, Peggle Master, to report to duty and shoot and bounce the critters to oblivion. Take your best shot ...",
       "raw_output": "{\n  \"hype_score\": 8.5,\n  \"story_score\": 7.0,\n  \"nostalgia_score\": 6.5\n}",
       "parsed_json": {
         "hype_score": 8.5,
@@ -30,69 +58,41 @@
         "story_score": 7.0,
         "nostalgia_score": 6.5
       },
-      "latency_seconds": 6.781,
-      "tokens_per_sec": 6.0,
+      "latency_seconds": 5.227,
+      "tokens_per_sec": 7.8,
       "ram_usage": {
-        "process_ram_gb": 1.997,
-        "system_ram_used_gb": 11.93,
+        "process_ram_gb": 2.231,
+        "system_ram_used_gb": 13.28,
         "system_ram_total_gb": 15.24,
-        "system_ram_percent": 78.3,
+        "system_ram_percent": 87.1,
         "gpu_vram_allocated_gb": 1.409,
         "gpu_vram_reserved_gb": 1.486
       }
     },
     {
-      "appid": 869840,
-      "game_name": "Feather Of Praying \u7fbd\u7ffc\u7684\u7948\u613f",
-      "genres": "adventure;indie",
-      "description_snippet": "Everyone has their own story and also has a different fate from others. No matter how cruel the reality is, we all have the right to hope for the future, look forward to, and look forward to, wishing ...",
-      "raw_output": "{\n  \"hype_score\": 8.5,\n  \"story_score\": 7.5,\n  \"nostalgia_score\": 6.0\n}",
-      "parsed_json": {
-        "hype_score": 8.5,
-        "story_score": 7.5,
-        "nostalgia_score": 6.0
-      },
-      "is_valid_json": true,
-      "scores": {
-        "hype_score": 8.5,
-        "story_score": 7.5,
-        "nostalgia_score": 6.0
-      },
-      "latency_seconds": 5.612,
-      "tokens_per_sec": 7.3,
-      "ram_usage": {
-        "process_ram_gb": 1.997,
-        "system_ram_used_gb": 11.97,
-        "system_ram_total_gb": 15.24,
-        "system_ram_percent": 78.6,
-        "gpu_vram_allocated_gb": 1.409,
-        "gpu_vram_reserved_gb": 1.486
-      }
-    },
-    {
-      "appid": 682670,
-      "game_name": "\u521d\u989c - The Prototype",
-      "genres": "adventure;indie;rpg",
-      "description_snippet": "Find yourself becoming Masato Gu - a desperate young physicist, and try to discover the truth about a lab accident five years ago in which you lost your love, with the Time Machine! But before that, w...",
-      "raw_output": "{\n  \"hype_score\": 7.5,\n  \"story_score\": 6.5,\n  \"nostalgia_score\": 5.0\n}",
+      "appid": 3332690,
+      "game_name": "Sweet Home 3: Look and Find Collector's Edition",
+      "genres": "casual",
+      "description_snippet": "Avi Games brings you the next part of the hidden object game 'Sweet Home: Look and Find'. Enjoy an even cozier collection of hidden-object tasks and mini games with 'Sweet Home Look and Find 3'! This ...",
+      "raw_output": "{\n  \"hype_score\": 7.5,\n  \"story_score\": 6.0,\n  \"nostalgia_score\": 5.5\n}",
       "parsed_json": {
         "hype_score": 7.5,
-        "story_score": 6.5,
-        "nostalgia_score": 5.0
+        "story_score": 6.0,
+        "nostalgia_score": 5.5
       },
       "is_valid_json": true,
       "scores": {
         "hype_score": 7.5,
-        "story_score": 6.5,
-        "nostalgia_score": 5.0
+        "story_score": 6.0,
+        "nostalgia_score": 5.5
       },
-      "latency_seconds": 5.745,
-      "tokens_per_sec": 7.1,
+      "latency_seconds": 5.491,
+      "tokens_per_sec": 7.5,
       "ram_usage": {
-        "process_ram_gb": 1.997,
-        "system_ram_used_gb": 12.05,
+        "process_ram_gb": 2.231,
+        "system_ram_used_gb": 13.41,
         "system_ram_total_gb": 15.24,
-        "system_ram_percent": 79.0,
+        "system_ram_percent": 88.0,
         "gpu_vram_allocated_gb": 1.409,
         "gpu_vram_reserved_gb": 1.486
       }

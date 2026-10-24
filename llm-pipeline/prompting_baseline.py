@@ -22,11 +22,11 @@ class PromptStrategy:
 
 # Ground truth benchmark reference scores (established by consensus on genres & reception)
 REFERENCE_TARGETS = {
-    "Counter-Strike": {"hype_score": 9.0, "story_score": 3.5, "nostalgia_score": 9.0},
-    "Portal": {"hype_score": 8.5, "story_score": 9.0, "nostalgia_score": 8.5},
-    "Dota 2": {"hype_score": 9.0, "story_score": 3.5, "nostalgia_score": 7.0},
-    "Darwinia": {"hype_score": 6.0, "story_score": 6.0, "nostalgia_score": 7.5},
-    "Killing Floor": {"hype_score": 7.5, "story_score": 5.0, "nostalgia_score": 7.5}
+    10: {"hype_score": 10.0, "story_score": 4.2, "nostalgia_score": 9.8},      # Counter-Strike
+    400: {"hype_score": 9.1, "story_score": 7.0, "nostalgia_score": 8.2},     # Portal
+    570: {"hype_score": 8.6, "story_score": 6.0, "nostalgia_score": 4.0},     # Dota 2
+    1500: {"hype_score": 4.3, "story_score": 7.4, "nostalgia_score": 10.0},   # Darwinia
+    1250: {"hype_score": 10.0, "story_score": 4.5, "nostalgia_score": 4.7}    # Killing Floor
 }
 
 
@@ -231,13 +231,15 @@ class PromptingBaselineEvaluator:
             total_mae = 0.0
 
             for g in benchmark_games:
+                appid = g.get("appid")
                 name = g["name"]
                 prompt = prompt_fn(self.tokenizer, name, g["genres"], g["description"])
                 eval_res = self.evaluate_sample(prompt, max_new_tokens=max_tokens)
+                eval_res["appid"] = appid
                 eval_res["game"] = name
                 
                 # Accuracy calculation against reference ground truth
-                ref_target = REFERENCE_TARGETS.get(name, {})
+                ref_target = REFERENCE_TARGETS.get(appid, REFERENCE_TARGETS.get(str(appid), {}))
                 mae, accuracy_pct = calculate_accuracy(eval_res["scores"], ref_target)
                 eval_res["mae"] = mae
                 eval_res["accuracy_pct"] = accuracy_pct
@@ -274,7 +276,12 @@ def run_prompting_baseline(
     desc_path = "cleaned_data/steam_descriptions_cleaned.csv"
 
     if os.path.exists(train_path):
-        merged = pd.read_csv(train_path)
+        split_dfs = [pd.read_csv(train_path)]
+        if os.path.exists("cleaned_data/valid.csv"):
+            split_dfs.append(pd.read_csv("cleaned_data/valid.csv"))
+        if os.path.exists("cleaned_data/test.csv"):
+            split_dfs.append(pd.read_csv("cleaned_data/test.csv"))
+        merged = pd.concat(split_dfs, ignore_index=True)
     elif os.path.exists(desc_path):
         df_steam = pd.read_csv("raw_data/steam.csv")
         df_desc = pd.read_csv(desc_path)
@@ -285,13 +292,14 @@ def run_prompting_baseline(
         merged = pd.merge(df_steam, df_desc, left_on="appid", right_on="steam_appid")
         merged["clean_description"] = merged.get("short_description", "")
 
-    # Target 5 representative benchmark games
-    target_names = ["Counter-Strike", "Portal", "Dota 2", "Darwinia", "Killing Floor"]
-    samples = merged[merged["name"].isin(target_names)]
+    # Target 5 representative benchmark games by AppID
+    target_appids = [10, 400, 570, 1500, 1250]
+    samples = merged[merged["appid"].isin(target_appids)].drop_duplicates(subset=["appid"])
     
     benchmark_games = []
     for _, row in samples.iterrows():
         benchmark_games.append({
+            "appid": int(row["appid"]),
             "name": row["name"],
             "genres": row["genres"],
             "description": str(row.get("clean_description") or row.get("short_description") or "")
