@@ -4,13 +4,83 @@ import json
 import time
 import psutil
 import argparse
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, List
 import pandas as pd
 import torch
 from dotenv import load_dotenv
 from transformers import AutoTokenizer, AutoModelForCausalLM
+import logging
 
 load_dotenv()
+logging.getLogger("transformers").setLevel(logging.ERROR)
+
+def resolve_data_dir(data_dir: str = "cleaned_data") -> str:
+    """
+    Resolves data_dir path whether executed from workspace root or llm-pipeline/ subfolder.
+    """
+    if os.path.exists(data_dir):
+        return data_dir
+    parent_candidate = os.path.join("..", data_dir)
+    if os.path.exists(parent_candidate):
+        return parent_candidate
+    return data_dir
+
+
+def resolve_output_path(output_path: str) -> str:
+    """
+    Resolves output path so baseline results are placed accurately without duplicate folders.
+    """
+    if os.path.basename(os.getcwd()) == "llm-pipeline" and output_path.startswith("llm-pipeline/"):
+        return output_path[len("llm-pipeline/"):]
+    return output_path
+
+
+def load_cleaned_data(
+    data_dir: str = "cleaned_data",
+    splits: Optional[List[str]] = None
+) -> pd.DataFrame:
+    """
+    Loads games and their descriptions from the cleaned_data folder architecture:
+    cleaned_data/train/, cleaned_data/valid/, cleaned_data/test/,
+    each containing games.csv and games_descriptions.csv.
+    Merges on 'appid'.
+    """
+    resolved_dir = resolve_data_dir(data_dir)
+    if splits is None:
+        splits = ["train", "valid", "test"]
+
+    dfs = []
+    for split in splits:
+        games_path = os.path.join(resolved_dir, split, "games.csv")
+        desc_path = os.path.join(resolved_dir, split, "games_descriptions.csv")
+
+        if os.path.exists(games_path) and os.path.exists(desc_path):
+            df_g = pd.read_csv(games_path)
+            df_d = pd.read_csv(desc_path)
+            merged = pd.merge(df_g, df_d, on="appid", how="inner")
+            merged["split"] = split
+            dfs.append(merged)
+        elif os.path.exists(games_path):
+            df_g = pd.read_csv(games_path)
+            df_g["split"] = split
+            dfs.append(df_g)
+        elif os.path.exists(os.path.join(resolved_dir, f"{split}.csv")):
+            # Fallback for legacy single-file splits
+            df_legacy = pd.read_csv(os.path.join(resolved_dir, f"{split}.csv"))
+            df_legacy["split"] = split
+            dfs.append(df_legacy)
+
+    if dfs:
+        combined = pd.concat(dfs, ignore_index=True)
+        # Ensure clean_description exists
+        if "clean_description" not in combined.columns and "short_description" in combined.columns:
+            combined["clean_description"] = combined["short_description"]
+        return combined
+
+    raise FileNotFoundError(
+        f"Could not find valid dataset splits in '{data_dir}' (resolved as '{resolved_dir}'). "
+        "Expected folders: train/, valid/, test/ each containing games.csv and games_descriptions.csv."
+    )
 
 
 def get_current_ram_usage() -> Dict[str, Any]:
@@ -207,30 +277,21 @@ class SteamLLMInferenceBaseline:
 
 def run_inference_baseline(
     model_id: str = "Qwen/Qwen3.5-0.8B",
-    num_samples: int = 3,
-    output_path: str = "llm-pipeline/inference_baseline_results.json"
+    num_samples: int = 5,
+    data_dir: str = "cleaned_data",
+    output_path: str = "llm-pipeline/baseline_results/inference_baseline_results.json"
 ) -> Dict[str, Any]:
     print(f"\n=======================================================")
     print(f"   Steam Hit Predictor: LLM Inference Baseline        ")
     print(f"   Model: {model_id}                                   ")
     print(f"=======================================================\n")
 
-    # Load from cleaned train split (which now contains all clean descriptions)
-    train_split_path = "cleaned_data/train.csv"
-    cleaned_desc_path = "cleaned_data/steam_descriptions_cleaned.csv"
+    resolved_data_dir = resolve_data_dir(data_dir)
+    resolved_output_path = resolve_output_path(output_path)
 
-    if os.path.exists(train_split_path):
-        df_games = pd.read_csv(train_split_path)
-    elif os.path.exists(cleaned_desc_path):
-        df_steam = pd.read_csv("raw_data/steam.csv")
-        df_desc = pd.read_csv(cleaned_desc_path)
-        df_games = pd.merge(df_steam, df_desc, left_on="appid", right_on="steam_appid")
-    else:
-        # Fallback to raw data
-        df_steam = pd.read_csv("raw_data/steam.csv")
-        df_desc = pd.read_csv("raw_data/steam_description_data.csv")
-        df_games = pd.merge(df_steam, df_desc, left_on="appid", right_on="steam_appid")
-        df_games["clean_description"] = df_games.get("short_description", "")
+    print(f"Loading cleaned dataset from: '{resolved_data_dir}'...")
+    df_games = load_cleaned_data(data_dir=resolved_data_dir)
+    print(f"Loaded {len(df_games):,} games with cleaned descriptions.")
 
     baseline = SteamLLMInferenceBaseline(model_id=model_id)
 
@@ -240,6 +301,8 @@ def run_inference_baseline(
     
     if len(samples) < num_samples:
         samples = df_games.head(num_samples)
+    else:
+        samples = samples.head(num_samples)
 
     runs = []
     print("\n--- Running Baseline Inference with RAM Tracking ---")
@@ -261,6 +324,14 @@ def run_inference_baseline(
         print(f"  * GPU VRAM Alloc:   {mem['gpu_vram_allocated_gb']} GB (Reserved: {mem['gpu_vram_reserved_gb']} GB)")
         print(f"  * Raw Generation:   {res['raw_output']}")
 
+        gt_scores = None
+        if "hype_score" in row and pd.notnull(row["hype_score"]):
+            gt_scores = {
+                "hype_score": float(row["hype_score"]),
+                "story_score": float(row["story_score"]),
+                "nostalgia_score": float(row["nostalgia_score"])
+            }
+
         run_entry = {
             "appid": appid,
             "game_name": title,
@@ -270,6 +341,7 @@ def run_inference_baseline(
             "parsed_json": res["parsed_json"],
             "is_valid_json": res["is_valid_json"],
             "scores": res["scores"],
+            "ground_truth_scores": gt_scores,
             "latency_seconds": res["latency_seconds"],
             "tokens_per_sec": res["tokens_per_sec"],
             "ram_usage": mem
@@ -301,11 +373,11 @@ def run_inference_baseline(
         "runs": runs
     }
 
-    if output_path:
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        with open(output_path, "w") as f:
+    if resolved_output_path:
+        os.makedirs(os.path.dirname(resolved_output_path), exist_ok=True)
+        with open(resolved_output_path, "w") as f:
             json.dump(summary_results, f, indent=2)
-        print(f"\nSaved inference baseline results JSON to: {output_path}")
+        print(f"\nSaved inference baseline results JSON to: {resolved_output_path}")
 
     print("\n=======================================================")
     print(f"Inference Baseline completed! Validity Rate: {summary_results['validity_rate']}% | Avg Latency: {summary_results['avg_latency_sec']}s")
@@ -316,8 +388,14 @@ def run_inference_baseline(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Steam Hit Predictor - LLM Inference Baseline")
     parser.add_argument("--model_id", type=str, default="Qwen/Qwen3.5-0.8B", help="Hugging Face Model ID")
-    parser.add_argument("--num_samples", type=int, default=3, help="Number of qualitative sample games to evaluate")
+    parser.add_argument("--num_samples", type=int, default=5, help="Number of qualitative sample games to evaluate")
+    parser.add_argument("--data_dir", type=str, default="cleaned_data", help="Path to cleaned_data directory")
     parser.add_argument("--output_path", type=str, default="llm-pipeline/baseline_results/inference_baseline_results.json", help="Output JSON path")
     args = parser.parse_args()
 
-    run_inference_baseline(model_id=args.model_id, num_samples=args.num_samples, output_path=args.output_path)
+    run_inference_baseline(
+        model_id=args.model_id,
+        num_samples=args.num_samples,
+        data_dir=args.data_dir,
+        output_path=args.output_path
+    )

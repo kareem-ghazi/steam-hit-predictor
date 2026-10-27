@@ -40,14 +40,19 @@
   - Implemented `llm-pipeline/inference_baseline.py` using **Qwen3.5-0.8B** on GPU (`cuda:0`):
     - System prompt and JSON payload parser with regex fallback.
     - Real-time RAM & VRAM tracking after every generation.
-    - Exports metrics to `llm-pipeline/inference_baseline_results.json` (100.0% validity rate, 5.328s avg latency, ~1.97 GB Process RAM, ~1.41 GB GPU VRAM).
+    - Exports metrics to `llm-pipeline/baseline_results/inference_baseline_results.json` (100.0% validity rate, 5.328s avg latency, ~1.97 GB Process RAM, ~1.41 GB GPU VRAM).
   - Implemented `llm-pipeline/prompting_baseline.py`:
     - Benchmarked **Zero-Shot**, **Few-Shot**, and **Chain-of-Thought (CoT)** prompting strategies.
     - Structured CoT prompt with concise reasoning dimensions, achieving **100.0% validity** across all three strategies:
       - **Zero-Shot:** 100.0% validity, 75.0% accuracy (±2.0 tolerance), 1.58 MAE, 5.694s latency.
       - **Few-Shot:** 100.0% validity, 75.0% accuracy (±2.0 tolerance), 1.67 MAE, 4.093s latency.
       - **Chain-of-Thought:** 100.0% validity, 66.7% accuracy (±2.0 tolerance), 1.83 MAE, 13.735s latency.
-    - Saved benchmark metrics to `llm-pipeline/prompting_baseline_results.json`.
+    - Saved benchmark metrics to `llm-pipeline/baseline_results/prompting_baseline_results.json`.
+  - **Adapted `llm-pipeline` to Three-Split `cleaned_data/` Dataset Architecture:**
+    - Updated `inference_baseline.py` and `prompting_baseline.py` to seamlessly load and merge game attributes and descriptions directly from `cleaned_data/` (`train/`, `valid/`, `test/` pairing `games.csv` with `games_descriptions.csv` on `appid`).
+    - Implemented shared dataset utilities (`load_cleaned_data`, `resolve_data_dir`, `resolve_output_path`) providing execution path flexibility (whether invoked from workspace root or `llm-pipeline/`).
+    - Added configurable `--data_dir` CLI parameter to both scripts.
+    - Dynamically bound benchmark evaluation ground truth to the metadata-derived non-leakage vibe scores (`hype_score`, `story_score`, `nostalgia_score`) computed by `generate_vibe_scores.py` and saved in `cleaned_data/`.
   - Created root [requirements.txt](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/requirements.txt) with pinned dependencies across data, ML, LLM, FastAPI, and test libraries.
   - Created root [Dockerfile](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/Dockerfile) containerizing the environment and FastAPI backend.
 
@@ -87,17 +92,19 @@ raw_data/dataset_attributes/*.csv (51 attribute files)
               ├── games.csv              (2,798 rows, 27 cols)
               └── games_descriptions.csv (2,798 rows, 5 cols)
                        │
-                       ▼
-          [ml-pipeline/xgboost_train.py]
-                       │
-                       ▼
-          saved_models/ml_models/xgboost_hit_predictor.pkl
-                       ▲
-                       │
-          [llm-pipeline/inference_baseline.py] -> 100% validity
-          [llm-pipeline/prompting_baseline.py] -> 100% validity
+         ┌─────────────┴────────────────────────┐
+         │                                      │
+         ▼                                      ▼
+[ml-pipeline/xgboost_train.py]        [llm-pipeline/load_cleaned_data()]
+         │                                      │
+         ▼                                      ├──> [llm-pipeline/inference_baseline.py]
+saved_models/ml_models/                         │    (RAM tracking + JSON schema validation)
+xgboost_hit_predictor.pkl                       │
+                                                └──> [llm-pipeline/prompting_baseline.py]
+                                                     (Zero-shot, Few-shot, CoT benchmarks)
 ```
 
 ## 4. Next Step
 - **Target File:** `llm-pipeline/qlora_training.py`
-- **Goal:** Phase 3: LLM Fine-Tuning & Main Build - Construct an instruction dataset pairing cleaned Steam descriptions with target JSON vibe scores (free of textual description data leakage), configure 4-bit QLoRA using `bitsandbytes` and `peft`/`SFTTrainer`, execute training on `cuda:0`, save the adapter to `saved_models/llm_adapters/`, and run before/after evaluation.
+- **Goal:** Phase 3: LLM Fine-Tuning & Main Build - Construct an instruction dataset pairing cleaned Steam descriptions (`cleaned_data/train/games_descriptions.csv`) with target JSON vibe scores (`cleaned_data/train/games.csv`, free of textual description data leakage), configure 4-bit QLoRA using `bitsandbytes` and `peft`/`SFTTrainer`, execute training on `cuda:0`, save the adapter to `saved_models/llm_adapters/`, and run before/after evaluation on `cleaned_data/valid/` and `cleaned_data/test/`.
+

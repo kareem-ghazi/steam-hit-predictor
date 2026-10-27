@@ -33,21 +33,25 @@ steam-hit-predictor/
 │   ├── artermiloff_steam_games_dataset/ # Kaggle March 2025 dataset
 │   ├── fronkongames_steam_games_dataset/ # Kaggle complete archive
 │   └── crainbramp_steam_dataset_2025/ # Kaggle 2025 analytics (CSV-only package)
-├── cleaned_data/                # Cleaned & stratified two-folder dataset splits
-│   ├── attributes/              # Tabular attributes without descriptions (target is_hit at end)
-│   │   ├── train.csv            # 80% train split (22,376 rows, 27 cols)
-│   │   ├── valid.csv            # 10% valid split (2,797 rows, 27 cols)
-│   │   └── test.csv             # 10% test split (2,798 rows, 27 cols)
-│   └── descriptions/            # Textual descriptions (short, about, detailed, clean_desc)
-│       ├── train.csv            # 80% train split (22,376 rows, 5 cols)
-│       ├── valid.csv            # 10% valid split (2,797 rows, 5 cols)
-│       └── test.csv             # 10% test split (2,798 rows, 5 cols)
+├── cleaned_data/                # Cleaned & stratified three-folder dataset architecture
+│   ├── train/                   # 80% train split
+│   │   ├── games.csv            # 22,376 rows, 27 cols (target is_hit at end)
+│   │   └── games_descriptions.csv # 22,376 rows, 5 cols (appid, short, about, detailed, clean_description)
+│   ├── valid/                   # 10% validation split
+│   │   ├── games.csv            # 2,797 rows, 27 cols
+│   │   └── games_descriptions.csv # 2,797 rows, 5 cols
+│   └── test/                    # 10% test split
+│       ├── games.csv            # 2,798 rows, 27 cols
+│       └── games_descriptions.csv # 2,798 rows, 5 cols
 ├── saved_models/                # Stores resulting model files
 │   ├── ml_models/               # XGBoost .pkl & price_scaler.pkl files
 │   └── llm_adapters/            # QLoRA weights
 ├── llm-pipeline/                
-│   ├── inference_baseline.py    # Baseline inference with RAM tracking (Qwen3.5-0.8B)
-│   ├── prompting_baseline.py    # Zero-shot, Few-shot, CoT accuracy & validity benchmark
+│   ├── baseline_results/        # Baseline benchmark metric JSONs
+│   │   ├── inference_baseline_results.json
+│   │   └── prompting_baseline_results.json
+│   ├── inference_baseline.py    # Baseline inference with RAM tracking & cleaned_data 3-split loader
+│   ├── prompting_baseline.py    # Zero-shot, Few-shot, CoT benchmark on cleaned_data
 │   └── qlora_training.py     
 ├── generate_vibe_scores.py       # Heuristic Vibe Score generator (hype, story, nostalgia)
 ├── ml-pipeline/                 
@@ -117,22 +121,23 @@ Please begin with Phase 1. Output the code, explain it briefly, and then output 
 * [x] Write `inference_baseline.py` to establish a working inference baseline, running `Qwen/Qwen3.5-0.8B` on GPU end-to-end to extract vibe scores, and measure process RAM, system RAM, and GPU VRAM after every output.
 * [x] Write `prompting_baseline.py` to establish a prompting baseline that records zero-shot, few-shot, and CoT results, measuring both JSON validity and accuracy (MAE and % within tolerance against ground-truth consensus).
 * [x] Add `requirements.txt` and `Dockerfile` for dependency management and containerized deployment.
+* [x] Adapt all `llm-pipeline/` scripts (`inference_baseline.py` and `prompting_baseline.py`) to work seamlessly with the 3-split folder architecture in `cleaned_data/` (`train/`, `valid/`, `test/` pairing `games.csv` and `games_descriptions.csv`) with automatic directory resolution and dynamic non-leakage ground-truth vibe scores.
 
 #### Phase 3: LLM Fine-Tuning & Main Build (llm-pipeline)
 
-* [ ] Write `qlora_training.py` to achieve a training/data milestone. This script must construct a training dataset converting Steam descriptions to the target JSON format, and feature a training loop running on the team's data with a relevant optimization applied (4-bit quantization via `bitsandbytes`). Provide specific details on configuring the `SFTTrainer` and LoRA hyperparameters (rank, alpha).
+* [ ] Write `qlora_training.py` to achieve a training/data milestone. This script must construct a training dataset from `cleaned_data/train/` pairing Steam descriptions (`games_descriptions.csv`) with target JSON vibe scores (from `games.csv`, free of textual description data leakage), and feature a training loop running on the team's data with a relevant optimization applied (4-bit quantization via `bitsandbytes`). Provide specific details on configuring the `SFTTrainer` and LoRA hyperparameters (rank, alpha).
 
 * [ ] As part of the main build, ensure the script saves the fine-tuned component (a QLoRA adapter trained on the team's data) to `saved_models/llm_adapters/` and includes code to run a before/after comparison to evaluate the improvement.
 
 #### Phase 4: The FastAPI Backend (backend/)
 
-* [ ] Create `main.py` that loads `steam.csv` into memory and initializes both the XGBoost classifier and the QLoRA adapter.
+* [ ] Create `main.py` that loads `cleaned_data/` into memory and initializes both the XGBoost classifier and the QLoRA adapter.
 * [ ] Create a `/predict` endpoint that accepts new game data, processes the description through the local LLM pipeline to extract vibe scores, runs the XGBoost prediction, and returns the result.
 * [ ] Create a `/similar` endpoint that filters the loaded dataset to return 3 historical games matching the predicted game's genre, price bracket, and `rating_text`.
 
 #### Phase 5: The React Frontend Dashboard (frontend/)
 
-* [ ] Build a **Dataset Explorer** component to display the `steam.csv` data in a UI grid, highlighting the newly engineered `rating_text`.
+* [ ] Build a **Dataset Explorer** component to display the `cleaned_data/` games in a UI grid, highlighting the newly engineered `rating_text`.
 * [ ] Build a **Developer Studio** component to accept new game parameters.
 * [ ] Build a **Results Pane** to display the XGBoost Hit/Flop prediction, LLM vibe scores, and the 3 similar historical games pulled from the backend.
 

@@ -8,26 +8,25 @@ import pandas as pd
 import torch
 from dotenv import load_dotenv
 from transformers import AutoTokenizer, AutoModelForCausalLM
+import logging
 
-from inference_baseline import extract_json_payload, validate_vibe_scores, get_current_ram_usage
+from inference_baseline import (
+    extract_json_payload,
+    validate_vibe_scores,
+    get_current_ram_usage,
+    load_cleaned_data,
+    resolve_data_dir,
+    resolve_output_path
+)
 
 load_dotenv()
-
+logging.getLogger("transformers").setLevel(logging.ERROR)
 
 class PromptStrategy:
     ZERO_SHOT = "zero_shot"
     FEW_SHOT = "few_shot"
     CHAIN_OF_THOUGHT = "chain_of_thought"
 
-
-# Ground truth benchmark reference scores (established by consensus on genres & reception)
-REFERENCE_TARGETS = {
-    10: {"hype_score": 10.0, "story_score": 4.2, "nostalgia_score": 9.8},      # Counter-Strike
-    400: {"hype_score": 9.1, "story_score": 7.0, "nostalgia_score": 8.2},     # Portal
-    570: {"hype_score": 8.6, "story_score": 6.0, "nostalgia_score": 4.0},     # Dota 2
-    1500: {"hype_score": 4.3, "story_score": 7.4, "nostalgia_score": 10.0},   # Darwinia
-    1250: {"hype_score": 10.0, "story_score": 4.5, "nostalgia_score": 4.7}    # Killing Floor
-}
 
 
 def calculate_accuracy(pred_scores: Dict[str, float], ground_truth: Dict[str, float], tolerance: float = 2.0) -> Tuple[float, float]:
@@ -84,17 +83,17 @@ def build_few_shot_prompt(tokenizer, title: str, genres: str, desc: str) -> str:
     
     example1_user = (
         "Title: Half-Life\n"
-        "Genres: Action;Sci-fi\n"
-        "Description: Named Game of the Year by over 50 publications, Valve's debut title blends action and adventure with award-winning technology."
+        "Genres: action\n"
+        "Description: Named Game of the Year by over 50 publications, Valve's debut title blends action and adventure with award-winning technology to create a frighteningly realistic world where players must think to survive."
     )
-    example1_assistant = '{"hype_score": 8.0, "story_score": 8.5, "nostalgia_score": 9.5}'
+    example1_assistant = '{"hype_score": 10.0, "story_score": 5.1, "nostalgia_score": 10.0}'
 
     example2_user = (
         "Title: Stardew Valley\n"
-        "Genres: Indie;RPG;Simulation\n"
-        "Description: You have inherited your grandfather's old farm plot. Armed with hand-me-down tools, can you turn these overgrown fields into a thriving home?"
+        "Genres: indie;rpg;simulation\n"
+        "Description: You've inherited your grandfather's old farm plot in Stardew Valley. Armed with hand-me-down tools and a few coins, you set out to begin your new life. Can you learn to live off the land and turn these overgrown fields into a thriving home?"
     )
-    example2_assistant = '{"hype_score": 7.5, "story_score": 7.0, "nostalgia_score": 8.5}'
+    example2_assistant = '{"hype_score": 9.3, "story_score": 7.1, "nostalgia_score": 6.2}'
 
     current_user = f"Title: {title}\nGenres: {genres}\nDescription: {desc[:800]}"
 
@@ -133,16 +132,16 @@ def build_cot_prompt(tokenizer, title: str, genres: str, desc: str) -> str:
     
     example_user = (
         "Title: Half-Life\n"
-        "Genres: Action;Sci-fi\n"
-        "Description: Named Game of the Year by over 50 publications, Valve's debut title blends action and adventure."
+        "Genres: action\n"
+        "Description: Named Game of the Year by over 50 publications, Valve's debut title blends action and adventure with award-winning technology to create a frighteningly realistic world where players must think to survive."
     )
     example_assistant = (
         "Reasoning:\n"
-        "- Story: Groundbreaking environmental storytelling and silent protagonist narrative.\n"
-        "- Hype: Legendary FPS franchise with historic gaming influence.\n"
-        "- Nostalgia: Foundational 1998 classic revered by retro gaming enthusiasts.\n"
+        "- Story: Immersive environmental storytelling following Gordon Freeman's survival in Black Mesa.\n"
+        "- Hype: Historic industry-defining FPS release with massive enduring global acclaim.\n"
+        "- Nostalgia: Foundational 1998 classic revered as one of the greatest PC games of all time.\n"
         "```json\n"
-        '{"hype_score": 8.0, "story_score": 8.5, "nostalgia_score": 9.5}\n'
+        '{"hype_score": 10.0, "story_score": 5.1, "nostalgia_score": 10.0}\n'
         "```"
     )
     
@@ -238,9 +237,10 @@ class PromptingBaselineEvaluator:
                 eval_res["appid"] = appid
                 eval_res["game"] = name
                 
-                # Accuracy calculation against reference ground truth
-                ref_target = REFERENCE_TARGETS.get(appid, REFERENCE_TARGETS.get(str(appid), {}))
+                # Accuracy calculation against ground truth from dataset
+                ref_target = g.get("ground_truth", {})
                 mae, accuracy_pct = calculate_accuracy(eval_res["scores"], ref_target)
+                eval_res["ground_truth"] = ref_target
                 eval_res["mae"] = mae
                 eval_res["accuracy_pct"] = accuracy_pct
                 
@@ -269,40 +269,43 @@ class PromptingBaselineEvaluator:
 
 def run_prompting_baseline(
     model_id: str = "Qwen/Qwen3.5-0.8B",
-    output_path: str = "llm-pipeline/prompting_baseline_results.json"
+    num_samples: int = 5,
+    data_dir: str = "cleaned_data",
+    output_path: str = "llm-pipeline/baseline_results/prompting_baseline_results.json"
 ):
-    print("Loading benchmark games from Steam cleaned dataset...")
-    train_path = "cleaned_data/train.csv"
-    desc_path = "cleaned_data/steam_descriptions_cleaned.csv"
+    resolved_data_dir = resolve_data_dir(data_dir)
+    resolved_output_path = resolve_output_path(output_path)
 
-    if os.path.exists(train_path):
-        split_dfs = [pd.read_csv(train_path)]
-        if os.path.exists("cleaned_data/valid.csv"):
-            split_dfs.append(pd.read_csv("cleaned_data/valid.csv"))
-        if os.path.exists("cleaned_data/test.csv"):
-            split_dfs.append(pd.read_csv("cleaned_data/test.csv"))
-        merged = pd.concat(split_dfs, ignore_index=True)
-    elif os.path.exists(desc_path):
-        df_steam = pd.read_csv("raw_data/steam.csv")
-        df_desc = pd.read_csv(desc_path)
-        merged = pd.merge(df_steam, df_desc, left_on="appid", right_on="steam_appid")
-    else:
-        df_steam = pd.read_csv("raw_data/steam.csv")
-        df_desc = pd.read_csv("raw_data/steam_description_data.csv")
-        merged = pd.merge(df_steam, df_desc, left_on="appid", right_on="steam_appid")
-        merged["clean_description"] = merged.get("short_description", "")
+    print(f"Loading benchmark games from Steam cleaned dataset at '{resolved_data_dir}'...")
+    merged = load_cleaned_data(data_dir=resolved_data_dir)
+    print(f"Total games loaded: {len(merged):,}")
 
-    # Target 5 representative benchmark games by AppID
-    target_appids = [10, 400, 570, 1500, 1250]
-    samples = merged[merged["appid"].isin(target_appids)].drop_duplicates(subset=["appid"])
+    # Pick sample games across genres
+    sample_appids = [10, 400, 570]  # Counter-Strike, Portal, Dota 2
+    samples = merged[merged["appid"].isin(sample_appids)]
     
+    if len(samples) < num_samples:
+        samples = merged.head(num_samples)
+    else:
+        samples = samples.head(num_samples)
+
     benchmark_games = []
     for _, row in samples.iterrows():
+        appid = int(row["appid"])
+        gt = {}
+        if "hype_score" in row and pd.notnull(row["hype_score"]):
+            gt = {
+                "hype_score": float(row["hype_score"]),
+                "story_score": float(row["story_score"]),
+                "nostalgia_score": float(row["nostalgia_score"])
+            }
+
         benchmark_games.append({
-            "appid": int(row["appid"]),
+            "appid": appid,
             "name": row["name"],
-            "genres": row["genres"],
-            "description": str(row.get("clean_description") or row.get("short_description") or "")
+            "genres": str(row.get("genres", "")),
+            "description": str(row.get("clean_description") or row.get("short_description") or ""),
+            "ground_truth": gt
         })
 
     evaluator = PromptingBaselineEvaluator(model_id=model_id)
@@ -317,16 +320,23 @@ def run_prompting_baseline(
         print(f"{strat:<18} | {data['validity_rate']}% ({data['valid_json_count']}/{data['total_samples']}) | {data['accuracy_rate']}% | {data['mean_absolute_error']} | {data['avg_latency_sec']}s")
     print("=========================================================================================\n")
 
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, "w") as f:
+    os.makedirs(os.path.dirname(resolved_output_path), exist_ok=True)
+    with open(resolved_output_path, "w") as f:
         json.dump(benchmark_results, f, indent=2)
-    print(f"Results recorded to: {output_path}")
+    print(f"Results recorded to: {resolved_output_path}")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Steam Hit Predictor - Prompting Baseline Evaluation")
     parser.add_argument("--model_id", type=str, default="Qwen/Qwen3.5-0.8B", help="Hugging Face Model ID")
+    parser.add_argument("--num_samples", type=int, default=5, help="Number of qualitative sample games to evaluate")
+    parser.add_argument("--data_dir", type=str, default="cleaned_data", help="Path to cleaned_data directory")
     parser.add_argument("--output_path", type=str, default="llm-pipeline/baseline_results/prompting_baseline_results.json", help="Output path")
     args = parser.parse_args()
 
-    run_prompting_baseline(model_id=args.model_id, output_path=args.output_path)
+    run_prompting_baseline(
+        model_id=args.model_id,
+        num_samples=args.num_samples,
+        data_dir=args.data_dir,
+        output_path=args.output_path
+    )

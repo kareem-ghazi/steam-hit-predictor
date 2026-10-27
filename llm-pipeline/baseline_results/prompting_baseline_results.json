@@ -3,103 +3,128 @@
     "total_samples": 5,
     "valid_json_count": 5,
     "validity_rate": 100.0,
-    "accuracy_rate": 73.4,
-    "mean_absolute_error": 1.77,
-    "avg_latency_sec": 5.768,
+    "accuracy_rate": 66.7,
+    "mean_absolute_error": 1.69,
+    "avg_latency_sec": 6.848,
     "runs": [
       {
-        "raw_output": "```json\n{\n  \"hype_score\": 8.5,\n  \"story_score\": 7.0,\n  \"nostalgia_score\": 8.0\n}\n```",
+        "raw_output": "```json\n{\n  \"hype_score\": 7.5,\n  \"story_score\": 6.0,\n  \"nostalgia_score\": 8.0\n}\n```",
         "parsed": {
-          "hype_score": 8.5,
-          "story_score": 7.0,
+          "hype_score": 7.5,
+          "story_score": 6.0,
           "nostalgia_score": 8.0
         },
         "is_valid": true,
         "scores": {
-          "hype_score": 8.5,
-          "story_score": 7.0,
+          "hype_score": 7.5,
+          "story_score": 6.0,
           "nostalgia_score": 8.0
         },
-        "latency": 7.274653673171997,
-        "appid": 1500,
-        "game": "Darwinia",
-        "mae": 2.2,
-        "accuracy_pct": 66.7
+        "latency": 8.16182827949524,
+        "appid": 2164780,
+        "game": "Tile Town",
+        "ground_truth": {
+          "hype_score": 5.3,
+          "story_score": 3.9,
+          "nostalgia_score": 4.0
+        },
+        "mae": 2.77,
+        "accuracy_pct": 0.0
       },
       {
-        "raw_output": "```json\n{\n  \"hype_score\": 9.5,\n  \"story_score\": 8.0,\n  \"nostalgia_score\": 9.0\n}\n```",
+        "raw_output": "```json\n{\n  \"hype_score\": 6.5,\n  \"story_score\": 7.0,\n  \"nostalgia_score\": 5.5\n}\n```",
         "parsed": {
-          "hype_score": 9.5,
-          "story_score": 8.0,
-          "nostalgia_score": 9.0
+          "hype_score": 6.5,
+          "story_score": 7.0,
+          "nostalgia_score": 5.5
         },
         "is_valid": true,
         "scores": {
-          "hype_score": 9.5,
-          "story_score": 8.0,
-          "nostalgia_score": 9.0
+          "hype_score": 6.5,
+          "story_score": 7.0,
+          "nostalgia_score": 5.5
         },
-        "latency": 5.484435319900513,
-        "appid": 570,
-        "game": "Dota 2",
-        "mae": 2.63,
-        "accuracy_pct": 66.7
-      },
-      {
-        "raw_output": "```json\n{\n  \"hype_score\": 9.5,\n  \"story_score\": 8.0,\n  \"nostalgia_score\": 7.5\n}\n```",
-        "parsed": {
-          "hype_score": 9.5,
-          "story_score": 8.0,
-          "nostalgia_score": 7.5
+        "latency": 6.999118328094482,
+        "appid": 1324340,
+        "game": "Made in Abyss: Binary Star Falling into Darkness",
+        "ground_truth": {
+          "hype_score": 5.5,
+          "story_score": 8.3,
+          "nostalgia_score": 4.1
         },
-        "is_valid": true,
-        "scores": {
-          "hype_score": 9.5,
-          "story_score": 8.0,
-          "nostalgia_score": 7.5
-        },
-        "latency": 5.842594861984253,
-        "appid": 400,
-        "game": "Portal",
-        "mae": 0.7,
+        "mae": 1.23,
         "accuracy_pct": 100.0
       },
       {
-        "raw_output": "{\"hype_score\": 10.0, \"story_score\": 8.0, \"nostalgia_score\": 9.0}",
+        "raw_output": "```json\n{\n  \"hype_score\": 7.5,\n  \"story_score\": 6.0,\n  \"nostalgia_score\": 5.0\n}\n```",
         "parsed": {
-          "hype_score": 10.0,
-          "story_score": 8.0,
-          "nostalgia_score": 9.0
+          "hype_score": 7.5,
+          "story_score": 6.0,
+          "nostalgia_score": 5.0
         },
         "is_valid": true,
         "scores": {
-          "hype_score": 10.0,
-          "story_score": 8.0,
-          "nostalgia_score": 9.0
+          "hype_score": 7.5,
+          "story_score": 6.0,
+          "nostalgia_score": 5.0
         },
-        "latency": 4.198533535003662,
-        "appid": 10,
-        "game": "Counter-Strike",
-        "mae": 1.53,
+        "latency": 6.4239702224731445,
+        "appid": 582990,
+        "game": "Space Fist",
+        "ground_truth": {
+          "hype_score": 6.0,
+          "story_score": 4.5,
+          "nostalgia_score": 3.5
+        },
+        "mae": 1.5,
+        "accuracy_pct": 100.0
+      },
+      {
+        "raw_output": "{\n  \"hype_score\": 8.5,\n  \"story_score\": 6.0,\n  \"nostalgia_score\": 7.0\n}",
+        "parsed": {
+          "hype_score": 8.5,
+          "story_score": 6.0,
+          "nostalgia_score": 7.0
+        },
+        "is_valid": true,
+        "scores": {
+          "hype_score": 8.5,
+          "story_score": 6.0,
+          "nostalgia_score": 7.0
+        },
+        "latency": 5.6782546043396,
+        "appid": 1397390,
+        "game": "The Break-In",
+        "ground_truth": {
+          "hype_score": 7.8,
+          "story_score": 6.1,
+          "nostalgia_score": 4.6
+        },
+        "mae": 1.07,
         "accuracy_pct": 66.7
       },
       {
-        "raw_output": "```json\n{\n  \"hype_score\": 8.5,\n  \"story_score\": 6.0,\n  \"nostalgia_score\": 7.0\n}\n```",
+        "raw_output": "```json\n{\n  \"hype_score\": 6.5,\n  \"story_score\": 7.0,\n  \"nostalgia_score\": 5.5\n}\n```",
         "parsed": {
-          "hype_score": 8.5,
-          "story_score": 6.0,
-          "nostalgia_score": 7.0
+          "hype_score": 6.5,
+          "story_score": 7.0,
+          "nostalgia_score": 5.5
         },
         "is_valid": true,
         "scores": {
-          "hype_score": 8.5,
-          "story_score": 6.0,
-          "nostalgia_score": 7.0
+          "hype_score": 6.5,
+          "story_score": 7.0,
+          "nostalgia_score": 5.5
         },
-        "latency": 6.042187929153442,
-        "appid": 1250,
-        "game": "Killing Floor",
-        "mae": 1.77,
+        "latency": 6.9750776290893555,
+        "appid": 777650,
+        "game": "Yet Another Research Dog",
+        "ground_truth": {
+          "hype_score": 5.0,
+          "story_score": 4.8,
+          "nostalgia_score": 3.5
+        },
+        "mae": 1.9,
         "accuracy_pct": 66.7
       }
     ]
@@ -108,104 +133,129 @@
     "total_samples": 5,
     "valid_json_count": 5,
     "validity_rate": 100.0,
-    "accuracy_rate": 66.7,
-    "mean_absolute_error": 1.81,
-    "avg_latency_sec": 4.775,
+    "accuracy_rate": 20.0,
+    "mean_absolute_error": 2.94,
+    "avg_latency_sec": 5.344,
     "runs": [
       {
-        "raw_output": "```json\n{\n  \"hype_score\": 8.5,\n  \"story_score\": 7.5,\n  \"nostalgia_score\": 8.0\n}\n```",
+        "raw_output": "```json\n{\n  \"hype_score\": 8.5,\n  \"story_score\": 6.8,\n  \"nostalgia_score\": 7.2\n}\n```",
         "parsed": {
           "hype_score": 8.5,
-          "story_score": 7.5,
-          "nostalgia_score": 8.0
+          "story_score": 6.8,
+          "nostalgia_score": 7.2
         },
         "is_valid": true,
         "scores": {
           "hype_score": 8.5,
-          "story_score": 7.5,
-          "nostalgia_score": 8.0
+          "story_score": 6.8,
+          "nostalgia_score": 7.2
         },
-        "latency": 5.957727909088135,
-        "appid": 1500,
-        "game": "Darwinia",
-        "mae": 2.1,
-        "accuracy_pct": 66.7
+        "latency": 6.726637363433838,
+        "appid": 2164780,
+        "game": "Tile Town",
+        "ground_truth": {
+          "hype_score": 5.3,
+          "story_score": 3.9,
+          "nostalgia_score": 4.0
+        },
+        "mae": 3.1,
+        "accuracy_pct": 0.0
       },
       {
-        "raw_output": "{\"hype_score\": 8.5, \"story_score\": 7.5, \"nostalgia_score\": 9.0}",
+        "raw_output": "{\"hype_score\": 9.5, \"story_score\": 8.2, \"nostalgia_score\": 7.8}",
         "parsed": {
-          "hype_score": 8.5,
-          "story_score": 7.5,
-          "nostalgia_score": 9.0
+          "hype_score": 9.5,
+          "story_score": 8.2,
+          "nostalgia_score": 7.8
         },
         "is_valid": true,
         "scores": {
-          "hype_score": 8.5,
-          "story_score": 7.5,
-          "nostalgia_score": 9.0
+          "hype_score": 9.5,
+          "story_score": 8.2,
+          "nostalgia_score": 7.8
         },
-        "latency": 4.115548372268677,
-        "appid": 570,
-        "game": "Dota 2",
-        "mae": 2.2,
-        "accuracy_pct": 66.7
-      },
-      {
-        "raw_output": "```json\n{\n  \"hype_score\": 8.5,\n  \"story_score\": 7.5,\n  \"nostalgia_score\": 8.0\n}\n```",
-        "parsed": {
-          "hype_score": 8.5,
-          "story_score": 7.5,
-          "nostalgia_score": 8.0
+        "latency": 4.757880687713623,
+        "appid": 1324340,
+        "game": "Made in Abyss: Binary Star Falling into Darkness",
+        "ground_truth": {
+          "hype_score": 5.5,
+          "story_score": 8.3,
+          "nostalgia_score": 4.1
         },
-        "is_valid": true,
-        "scores": {
-          "hype_score": 8.5,
-          "story_score": 7.5,
-          "nostalgia_score": 8.0
-        },
-        "latency": 5.673058986663818,
-        "appid": 400,
-        "game": "Portal",
-        "mae": 0.43,
-        "accuracy_pct": 100.0
-      },
-      {
-        "raw_output": "{\"hype_score\": 9.0, \"story_score\": 7.5, \"nostalgia_score\": 8.0}",
-        "parsed": {
-          "hype_score": 9.0,
-          "story_score": 7.5,
-          "nostalgia_score": 8.0
-        },
-        "is_valid": true,
-        "scores": {
-          "hype_score": 9.0,
-          "story_score": 7.5,
-          "nostalgia_score": 8.0
-        },
-        "latency": 4.051671743392944,
-        "appid": 10,
-        "game": "Counter-Strike",
-        "mae": 2.03,
-        "accuracy_pct": 66.7
-      },
-      {
-        "raw_output": "{\"hype_score\": 8.5, \"story_score\": 7.5, \"nostalgia_score\": 7.0}",
-        "parsed": {
-          "hype_score": 8.5,
-          "story_score": 7.5,
-          "nostalgia_score": 7.0
-        },
-        "is_valid": true,
-        "scores": {
-          "hype_score": 8.5,
-          "story_score": 7.5,
-          "nostalgia_score": 7.0
-        },
-        "latency": 4.074890851974487,
-        "appid": 1250,
-        "game": "Killing Floor",
-        "mae": 2.27,
+        "mae": 2.6,
         "accuracy_pct": 33.3
+      },
+      {
+        "raw_output": "{\"hype_score\": 9.5, \"story_score\": 6.8, \"nostalgia_score\": 8.2}",
+        "parsed": {
+          "hype_score": 9.5,
+          "story_score": 6.8,
+          "nostalgia_score": 8.2
+        },
+        "is_valid": true,
+        "scores": {
+          "hype_score": 9.5,
+          "story_score": 6.8,
+          "nostalgia_score": 8.2
+        },
+        "latency": 4.2724289894104,
+        "appid": 582990,
+        "game": "Space Fist",
+        "ground_truth": {
+          "hype_score": 6.0,
+          "story_score": 4.5,
+          "nostalgia_score": 3.5
+        },
+        "mae": 3.5,
+        "accuracy_pct": 0.0
+      },
+      {
+        "raw_output": "```json\n{\n  \"hype_score\": 9.5,\n  \"story_score\": 7.8,\n  \"nostalgia_score\": 8.2\n}\n```",
+        "parsed": {
+          "hype_score": 9.5,
+          "story_score": 7.8,
+          "nostalgia_score": 8.2
+        },
+        "is_valid": true,
+        "scores": {
+          "hype_score": 9.5,
+          "story_score": 7.8,
+          "nostalgia_score": 8.2
+        },
+        "latency": 6.302167654037476,
+        "appid": 1397390,
+        "game": "The Break-In",
+        "ground_truth": {
+          "hype_score": 7.8,
+          "story_score": 6.1,
+          "nostalgia_score": 4.6
+        },
+        "mae": 2.33,
+        "accuracy_pct": 66.7
+      },
+      {
+        "raw_output": "{\"hype_score\": 8.5, \"story_score\": 7.8, \"nostalgia_score\": 6.5}",
+        "parsed": {
+          "hype_score": 8.5,
+          "story_score": 7.8,
+          "nostalgia_score": 6.5
+        },
+        "is_valid": true,
+        "scores": {
+          "hype_score": 8.5,
+          "story_score": 7.8,
+          "nostalgia_score": 6.5
+        },
+        "latency": 4.662984848022461,
+        "appid": 777650,
+        "game": "Yet Another Research Dog",
+        "ground_truth": {
+          "hype_score": 5.0,
+          "story_score": 4.8,
+          "nostalgia_score": 3.5
+        },
+        "mae": 3.17,
+        "accuracy_pct": 0.0
       }
     ]
   },
@@ -213,104 +263,129 @@
     "total_samples": 5,
     "valid_json_count": 5,
     "validity_rate": 100.0,
-    "accuracy_rate": 66.7,
-    "mean_absolute_error": 2.0,
-    "avg_latency_sec": 13.83,
+    "accuracy_rate": 13.3,
+    "mean_absolute_error": 3.99,
+    "avg_latency_sec": 18.855,
     "runs": [
       {
-        "raw_output": "Reasoning:\n- Story: A strategic survival game where players must guide Darwinians through a retro-inspired digital world to defeat viruses and restore order.\n- Hype: A groundbreaking indie title that merges RTS, action, and puzzles with a unique gesture-based control system.\n- Nostalgia: A seminal award-winning title that redefined the genre with its innovative gameplay mechanics.\n```json\n{\"hype_score\": 8.5, \"story_score\": 8.0, \"nostalgia_score\": 9.0}\n```",
+        "raw_output": "Reasoning:\n- Story: A strategic exploration of medieval town-building and resource management on a hexagonal grid.\n- Hype: A unique indie strategy game with a charming aesthetic and a unique gameplay loop that feels both challenging and relaxing.\n- Nostalgia: A nostalgic homage to classic strategy games while offering a fresh, modern twist on the genre.\n```json\n{\"hype_score\": 9.5, \"story_score\": 8.0, \"nostalgia_score\": 9.0}\n```",
         "parsed": {
-          "hype_score": 8.5,
+          "hype_score": 9.5,
           "story_score": 8.0,
           "nostalgia_score": 9.0
         },
         "is_valid": true,
         "scores": {
-          "hype_score": 8.5,
+          "hype_score": 9.5,
           "story_score": 8.0,
           "nostalgia_score": 9.0
         },
-        "latency": 14.885603666305542,
-        "appid": 1500,
-        "game": "Darwinia",
-        "mae": 1.93,
-        "accuracy_pct": 66.7
+        "latency": 16.03474736213684,
+        "appid": 2164780,
+        "game": "Tile Town",
+        "ground_truth": {
+          "hype_score": 5.3,
+          "story_score": 3.9,
+          "nostalgia_score": 4.0
+        },
+        "mae": 4.43,
+        "accuracy_pct": 0.0
       },
       {
-        "raw_output": "Reasoning:\n- Story: A dynamic narrative-driven experience where players evolve through a complex hero roster and strategic combat.\n- Hype: A massive, community-driven franchise with a unique free-to-play model and constant seasonal updates.\n- Nostalgia: A classic free-to-play strategy game that defined the early 2010s gaming landscape.\n```json\n{\"hype_score\": 9.0, \"story_score\": 8.0, \"nostalgia_score\": 9.0}\n```",
+        "raw_output": "Reasoning:\n- Story: The narrative follows Riko and her companions navigating a perilous underwater journey through the Abyss, blending survival horror with deep-sea exploration.\n- Hype: A groundbreaking action-adventure title that redefines the genre with its unique blend of ancient curses and legendary creatures.\n- Nostalgia: A timeless classic that captures the essence of the 1990s action-adventure genre with its iconic visuals and gameplay mechanics.\n```json\n{\"hype_score\": 10.0, \"story_score\": 5.0, \"nostalgia_score\": 10.0}\n```",
         "parsed": {
-          "hype_score": 9.0,
-          "story_score": 8.0,
-          "nostalgia_score": 9.0
+          "hype_score": 10.0,
+          "story_score": 5.0,
+          "nostalgia_score": 10.0
         },
         "is_valid": true,
         "scores": {
-          "hype_score": 9.0,
-          "story_score": 8.0,
-          "nostalgia_score": 9.0
+          "hype_score": 10.0,
+          "story_score": 5.0,
+          "nostalgia_score": 10.0
         },
-        "latency": 13.786649942398071,
-        "appid": 570,
-        "game": "Dota 2",
-        "mae": 2.47,
-        "accuracy_pct": 66.7
+        "latency": 18.60785412788391,
+        "appid": 1324340,
+        "game": "Made in Abyss: Binary Star Falling into Darkness",
+        "ground_truth": {
+          "hype_score": 5.5,
+          "story_score": 8.3,
+          "nostalgia_score": 4.1
+        },
+        "mae": 4.57,
+        "accuracy_pct": 0.0
       },
       {
-        "raw_output": "Reasoning:\n- Story: A narrative-driven exploration of a mysterious laboratory setting that invites players to uncover secrets and solve puzzles.\n- Hype: A groundbreaking single-player experience that promises hours of unique gameplay and innovation.\n- Nostalgia: A classic retro game that remains a beloved icon in the gaming community.\n```json\n{\"hype_score\": 8.5, \"story_score\": 8.0, \"nostalgia_score\": 9.0}\n```",
+        "raw_output": "Reasoning:\n- Story: The narrative follows a lone fighter battling diverse, procedurally generated enemies in a vast, open virtual world.\n- Hype: A unique indie action game with a distinct \"waving fists\" mechanic that creates a memorable and engaging gameplay loop.\n- Nostalgia: A retro-futuristic indie title that offers a nostalgic feel for the early 2000s gaming era.\n```json\n{\"hype_score\": 10.0, \"story_score\": 5.0, \"nostalgia_score\": 10.0}\n```",
         "parsed": {
-          "hype_score": 8.5,
-          "story_score": 8.0,
-          "nostalgia_score": 9.0
+          "hype_score": 10.0,
+          "story_score": 5.0,
+          "nostalgia_score": 10.0
         },
         "is_valid": true,
         "scores": {
-          "hype_score": 8.5,
-          "story_score": 8.0,
-          "nostalgia_score": 9.0
+          "hype_score": 10.0,
+          "story_score": 5.0,
+          "nostalgia_score": 10.0
         },
-        "latency": 13.329738855361938,
-        "appid": 400,
-        "game": "Portal",
-        "mae": 0.8,
-        "accuracy_pct": 100.0
-      },
-      {
-        "raw_output": "Reasoning:\n- Story: A gritty, realistic narrative where player choices directly impact the outcome of a high-stakes terrorist mission.\n- Hype: A legendary, award-winning shooter that defines the modern competitive FPS genre.\n- Nostalgia: A timeless classic that remains a staple in the gaming community.\n```json\n{\"hype_score\": 9.0, \"story_score\": 8.0, \"nostalgia_score\": 9.0}\n```",
-        "parsed": {
-          "hype_score": 9.0,
-          "story_score": 8.0,
-          "nostalgia_score": 9.0
+        "latency": 18.144593238830566,
+        "appid": 582990,
+        "game": "Space Fist",
+        "ground_truth": {
+          "hype_score": 6.0,
+          "story_score": 4.5,
+          "nostalgia_score": 3.5
         },
-        "is_valid": true,
-        "scores": {
-          "hype_score": 9.0,
-          "story_score": 8.0,
-          "nostalgia_score": 9.0
-        },
-        "latency": 12.848293542861938,
-        "appid": 10,
-        "game": "Counter-Strike",
-        "mae": 1.87,
-        "accuracy_pct": 66.7
-      },
-      {
-        "raw_output": "Reasoning:\n- Story: A gritty, atmospheric survival horror experience where the player navigates a hostile environment with limited resources.\n- Hype: A standout 6-player co-op survival horror title praised for its unique gameplay mechanics and endless updates.\n- Nostalgia: A classic survival horror title that remains a beloved staple in the genre.\n```json\n{\"hype_score\": 8.5, \"story_score\": 7.5, \"nostalgia_score\": 9.0}\n```",
-        "parsed": {
-          "hype_score": 8.5,
-          "story_score": 7.5,
-          "nostalgia_score": 9.0
-        },
-        "is_valid": true,
-        "scores": {
-          "hype_score": 8.5,
-          "story_score": 7.5,
-          "nostalgia_score": 9.0
-        },
-        "latency": 14.297266483306885,
-        "appid": 1250,
-        "game": "Killing Floor",
-        "mae": 2.93,
+        "mae": 3.67,
         "accuracy_pct": 33.3
+      },
+      {
+        "raw_output": "Reasoning:\n- Story: A cooperative survival simulation where players must steal valuable items from a hostile environment using a variety of vehicles and gear.\n- Hype: A groundbreaking indie title that combines action, simulation, and VR capabilities in a unique, high-stakes survival mode.\n- Nostalgia: A classic indie experience that offers a nostalgic return to the genre while maintaining its distinctive, gritty aesthetic.\n```json\n{\"hype_score\": 10.0, \"story_score\": 5.0, \"nostalgia_score\": 10.0}\n```",
+        "parsed": {
+          "hype_score": 10.0,
+          "story_score": 5.0,
+          "nostalgia_score": 10.0
+        },
+        "is_valid": true,
+        "scores": {
+          "hype_score": 10.0,
+          "story_score": 5.0,
+          "nostalgia_score": 10.0
+        },
+        "latency": 18.450409412384033,
+        "appid": 1397390,
+        "game": "The Break-In",
+        "ground_truth": {
+          "hype_score": 7.8,
+          "story_score": 6.1,
+          "nostalgia_score": 4.6
+        },
+        "mae": 2.9,
+        "accuracy_pct": 33.3
+      },
+      {
+        "raw_output": "Reasoning:\n- Story: A grounded narrative exploring the struggle of a PhD student facing a career-defying internship in a random lab, highlighting the tension between ambition and reality.\n- Hype: A compelling simulation strategy game that offers a unique blend of research, strategy, and casual elements, promising an engaging experience.\n- Nostalgia: A nostalgic tribute to the classic \"Research Dog\" series, capturing the essence of early 2000s strategy games.\n```json\n{\"hype_score\": 9.5, \"story_score\": 8.0, \"nostalgia_score\": 9.0}\n```",
+        "parsed": {
+          "hype_score": 9.5,
+          "story_score": 8.0,
+          "nostalgia_score": 9.0
+        },
+        "is_valid": true,
+        "scores": {
+          "hype_score": 9.5,
+          "story_score": 8.0,
+          "nostalgia_score": 9.0
+        },
+        "latency": 23.03752636909485,
+        "appid": 777650,
+        "game": "Yet Another Research Dog",
+        "ground_truth": {
+          "hype_score": 5.0,
+          "story_score": 4.8,
+          "nostalgia_score": 3.5
+        },
+        "mae": 4.4,
+        "accuracy_pct": 0.0
       }
     ]
   }
