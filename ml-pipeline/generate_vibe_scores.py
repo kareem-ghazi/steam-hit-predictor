@@ -15,7 +15,7 @@ downstream LLM fine-tuning and evaluation.
 import os
 import re
 import argparse
-from typing import Dict, Any, Union
+from typing import Dict, Any, Union, Optional
 import numpy as np
 import pandas as pd
 
@@ -54,6 +54,40 @@ def _extract_release_year(val: Any) -> int:
     return 2015
 
 
+def _extract_approval_rate(row: Union[pd.Series, Dict[str, Any]]) -> Optional[float]:
+    """
+    Extracts or computes the approval rating (0.0 to 1.0) from row attributes.
+    Supports 'approval_rating', 'approval_rate', or computes from positive/total ratings.
+    """
+    val = row.get("approval_rating")
+    if val is None or pd.isna(val):
+        val = row.get("approval_rate")
+    if val is not None and not pd.isna(val):
+        try:
+            rate = float(val)
+            if rate > 1.0:  # If provided as 0-100 percentage (e.g. 85.0 -> 0.85)
+                rate = rate / 100.0
+            return float(np.clip(rate, 0.0, 1.0))
+        except (ValueError, TypeError):
+            pass
+
+    # Fallback to computing from positive_ratings and total_reviews / negative_ratings
+    pos = row.get("positive_ratings")
+    tot = row.get("total_reviews")
+    neg = row.get("negative_ratings")
+    if pos is not None and not pd.isna(pos):
+        try:
+            pos_val = float(pos)
+            if tot is not None and not pd.isna(tot) and float(tot) > 0:
+                return float(np.clip(pos_val / float(tot), 0.0, 1.0))
+            if neg is not None and not pd.isna(neg) and (pos_val + float(neg)) > 0:
+                return float(np.clip(pos_val / (pos_val + float(neg)), 0.0, 1.0))
+        except (ValueError, TypeError):
+            pass
+
+    return None
+
+
 def calculate_game_vibe_scores(row: Union[pd.Series, Dict[str, Any]]) -> Dict[str, float]:
     """
     Computes calibrated hype_score, story_score, and nostalgia_score (1.0 to 10.0)
@@ -64,6 +98,7 @@ def calculate_game_vibe_scores(row: Union[pd.Series, Dict[str, Any]]) -> Dict[st
     4. Publisher pedigree & market traction (owners bracket)
     5. Release date vintage & historical heritage
     6. Pricing and engagement signals
+    7. Player community approval rating (approval_rating / approval_rate)
 
     NOTE: No description text is used to prevent data leakage in LLM training.
     """
@@ -76,6 +111,7 @@ def calculate_game_vibe_scores(row: Union[pd.Series, Dict[str, Any]]) -> Dict[st
     price = float(row.get("price", 0.0) or 0.0)
     release_year = _extract_release_year(row.get("release_date", ""))
     playtime = float(row.get("average_playtime", 0.0) or 0.0)
+    approval_rate = _extract_approval_rate(row)
 
     # =========================================================================
     # A. HYPE SCORE HEURISTIC (1.0 - 10.0)
@@ -111,6 +147,17 @@ def calculate_game_vibe_scores(row: Union[pd.Series, Dict[str, Any]]) -> Dict[st
     # Deep player retention signal
     if playtime > 1000:
         hype += 0.5
+
+    # Player community approval signal (positive buzz amplifies hype; severe backlash dampens buzz)
+    if approval_rate is not None:
+        if approval_rate >= 0.90:
+            hype += 0.8
+        elif approval_rate >= 0.80:
+            hype += 0.4
+        elif approval_rate <= 0.40:
+            hype -= 1.0
+        elif approval_rate < 0.60:
+            hype -= 0.5
 
     hype_score = round(float(np.clip(hype, 1.0, 10.0)), 1)
 
@@ -150,6 +197,17 @@ def calculate_game_vibe_scores(row: Union[pd.Series, Dict[str, Any]]) -> Dict[st
     if "multiplayer only" in tags or ("pvp" in tags and "single-player" not in categories):
         story -= 1.0
 
+    # Player community approval signal (player consensus on storytelling execution)
+    if approval_rate is not None:
+        if approval_rate >= 0.88:
+            story += 0.6
+        elif approval_rate >= 0.78:
+            story += 0.3
+        elif approval_rate <= 0.40:
+            story -= 1.0
+        elif approval_rate < 0.55:
+            story -= 0.6
+
     story_score = round(float(np.clip(story, 1.0, 10.0)), 1)
 
     # =========================================================================
@@ -181,6 +239,15 @@ def calculate_game_vibe_scores(row: Union[pd.Series, Dict[str, Any]]) -> Dict[st
     # Title franchise legacy signal
     if re.search(r"\b(ii|iii|iv|v|vi|classic|remastered|hd|edition|anniversary|legacy|collection)\b", title):
         nostalgia += 0.8
+
+    # Player community approval signal (revered classic status vs panned vintage port)
+    if approval_rate is not None:
+        if approval_rate >= 0.88:
+            nostalgia += 0.5
+        elif approval_rate <= 0.40:
+            nostalgia -= 0.8
+        elif approval_rate < 0.55:
+            nostalgia -= 0.4
 
     nostalgia_score = round(float(np.clip(nostalgia, 1.0, 10.0)), 1)
 
@@ -230,7 +297,9 @@ def run_cli():
             if not match.empty:
                 row = match.iloc[0]
                 scores = calculate_game_vibe_scores(row)
-                print(f"\nGame: '{row['name']}' ({row.get('genres', '')})")
+                app_val = _extract_approval_rate(row)
+                app_str = f", Approval: {app_val:.1%}" if app_val is not None else ""
+                print(f"\nGame: '{row['name']}' ({row.get('genres', '')}{app_str})")
                 print(f"Calculated Vibe Scores (metadata-only): {scores}\n")
             else:
                 print(f"Game '{args.test_game}' not found in {args.input}.")

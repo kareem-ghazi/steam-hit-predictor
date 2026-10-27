@@ -22,11 +22,11 @@
   - **USD Price Unification & StandardScaler:** Converted non-USD currencies to USD using exchange rates; fitted `StandardScaler` strictly on training set prices to generate `price_scaled` (saved artifact: `saved_models/ml_models/price_scaler.pkl`).
   - **Categorical Columns Preserved:** Removed `OrdinalEncoder` from data prep, preserving raw categorical string formats for `genres`, `platforms`, `publisher`, `developer`, `categories`, and `steamspy_tags`.
   - **Dedicated Heuristic Vibe Score Generator ([ml-pipeline/generate_vibe_scores.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/ml-pipeline/generate_vibe_scores.py)):**
-    - **Description-Leakage-Free Engine:** Calculates calibrated vibe scores **purely from non-description metadata** (genres, categories, steamspy tags, publisher prestige, ownership footprint, playtime, release year, pricing signals).
+    - **Description-Leakage-Free Engine:** Calculates calibrated vibe scores **purely from non-description metadata** (genres, categories, steamspy tags, publisher prestige, ownership footprint, playtime, release year, pricing signals, and player approval rating).
     - **Zero Description Text Used:** Completely excludes `short_description`, `about_the_game`, `detailed_description`, and `clean_description` to prevent target data leakage during Phase 3 LLM fine-tuning.
-    - **Hype Score (1.0 - 10.0):** (Mean: 5.60, Std: 1.18, Min: 4.0, Max: 10.0)
-    - **Story Score (1.0 - 10.0):** (Mean: 5.82, Std: 2.39, Min: 1.0, Max: 10.0)
-    - **Nostalgia Score (1.0 - 10.0):** (Mean: 4.33, Std: 1.08, Min: 3.5, Max: 10.0)
+    - **Hype Score (1.0 - 10.0):** (Mean: 5.86, Std: 1.21, Min: 3.0, Max: 10.0)
+    - **Story Score (1.0 - 10.0):** (Mean: 6.00, Std: 2.40, Min: 1.0, Max: 10.0)
+    - **Nostalgia Score (1.0 - 10.0):** (Mean: 4.45, Std: 1.18, Min: 2.7, Max: 10.0)
   - **Three Split Folders Architecture (`cleaned_data/`):**
     - `cleaned_data/train/`: Contains `games.csv` (22,376 rows, 27 columns with target `is_hit` at the end) and `games_descriptions.csv` (22,376 rows, 5 columns: `appid`, `short_description`, `about_the_game`, `detailed_description`, `clean_description`).
     - `cleaned_data/valid/`: Contains `games.csv` (2,797 rows, 27 columns) and `games_descriptions.csv` (2,797 rows, 5 columns).
