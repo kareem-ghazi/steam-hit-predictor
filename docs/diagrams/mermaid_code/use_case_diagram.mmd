@@ -1,0 +1,48 @@
+flowchart LR
+    %% Actors
+    User(("User"))
+    Guest(("Guest"))
+    Admin(("Administrator"))
+
+    %% System Boundary
+    subgraph GameMetrics
+        direction TB
+        bookmark("Bookmark Games")
+        view_db("View Games Database")
+        signup("Sign Up")
+        login("Log In")
+        add_game("Add New Private Game")
+        use_tools("Use Tools")
+        predict("Predict Hit or Not")
+        analyze("Description Analyzer")
+        checkout("Checkout")
+        sub("Monthly/Annual Subscription")
+        api("API Credits")
+        up_models("Update Models")
+        up_db("Update Games Database")
+    end
+
+    %% User Interactions
+    User --- bookmark
+    User --- view_db
+    User --- login
+    User --- add_game
+    User --- use_tools
+    User --- checkout
+
+    %% Sub-use cases for Use Tools
+    use_tools --- predict
+    use_tools --- analyze
+
+    %% Sub-use cases for Checkout
+    checkout --- sub
+    checkout --- api
+
+    %% Guest Interactions
+    view_db --- Guest
+    signup --- Guest
+    login --- Guest
+
+    %% Admin Interactions
+    up_models --- Admin
+    up_db --- Admin

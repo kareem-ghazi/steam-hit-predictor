@@ -1,0 +1,37 @@
+---
+config:
+  theme: redux-color
+  look: neo
+---
+sequenceDiagram
+    actor User
+    participant Frontend as Frontend
+    participant Backend as Backend
+    participant DB as Database
+
+    alt Sign Up Flow
+        User->>Frontend: Enters Registration Details
+        Frontend->>Backend: POST /signup (firstname, lastname, email, age, etc.)
+        Backend->>DB: Check if email already exists
+        DB-->>Backend: Email available
+        Backend->>DB: Insert new User record
+        DB-->>Backend: Success (userid generated)
+        Backend-->>Frontend: 201 Created
+        Frontend-->>User: Show Success & Redirect to Login
+        
+    else Log In Flow
+        User->>Frontend: Enters Email & Password
+        Frontend->>Backend: POST /login
+        Backend->>DB: Query User by email
+        DB-->>Backend: Retrieve password hash
+        Backend->>Backend: Verify password hash
+        
+        alt Valid Credentials
+            Backend->>Backend: Generate JWT Auth Token
+            Backend-->>Frontend: 200 OK
+            Frontend-->>User: Redirect to Dashboard
+        else Invalid Credentials
+            Backend-->>Frontend: 401 Unauthorized
+            Frontend-->>User: Show Error Message
+        end
+    end

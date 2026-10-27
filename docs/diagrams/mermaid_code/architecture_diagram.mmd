@@ -1,0 +1,20 @@
+flowchart TD
+    %% Nodes with matching shapes
+    User[User]
+    React(React Frontend)
+    Backend[Python FastAPI<br>Backend]
+    LLM[(Local Description Analyzer LLM via QLoRA)]
+    XGBoost[(XGBoost Hit<br>Classifier)]
+
+    %% Connections and Labels
+    User -->|Submits Game Concept| React
+    React -->|Displays Dashboard| User
+    
+    React -->|POST JSON Request| Backend
+    Backend -->|Sends Final Result| React
+    
+    Backend -->|Sends Description| LLM
+    LLM -->|Returns JSON Scores| Backend
+    
+    Backend -->|Sends Input Attributes| XGBoost
+    XGBoost -->|Returns Hit/Flop| Backend

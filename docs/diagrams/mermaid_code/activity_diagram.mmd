@@ -1,0 +1,24 @@
+---
+config:
+  layout: dagre
+---
+stateDiagram
+  direction TB
+  [*] --> Load
+  Load --> CleanTabular
+  Load --> CleanText
+  CleanTabular --> Merge
+  CleanText --> Merge
+  Merge --> FeatEng
+  FeatEng --> Encode
+  Encode --> DataSplit
+  DataSplit --> Save
+  Save --> [*]
+  Load:Load Raw Datasets
+  CleanTabular:Clean & Format Tabular Data
+  CleanText:Clean Text Descriptions
+  Merge:Merge Datasets
+  FeatEng:Feature Engineer the Target Variable
+  Encode:Encode Categorical Features
+  DataSplit:Split Data into Train, Validation & Test Sets
+  Save:Format & Save Final Datasets

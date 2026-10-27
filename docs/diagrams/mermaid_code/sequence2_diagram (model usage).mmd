@@ -1,0 +1,26 @@
+sequenceDiagram
+    actor User
+    participant Frontend as Frontend
+    participant Backend as Backend
+    participant LLM as Local LLM
+    participant XGBoost as XGBoost Classifier
+    participant DB as Database
+
+    User->>Frontend: Submits Game Concept<br>(Title, Description, Genres, etc.)
+    Frontend->>Backend: POST JSON Request
+    
+    Backend->>LLM: Sends Description
+    Note right of LLM: Analyzes text for hype, story,<br/> and nostalgia factors
+    LLM-->>Backend: Returns JSON Scores
+    
+    Backend->>Backend: Merge LLM Scores with<br>Original Input Attributes
+    
+    Backend->>XGBoost: Sends Complete Input Attributes
+    Note right of XGBoost: Classifies as<br>successful or not
+    XGBoost-->>Backend: Returns Hit/Flop Prediction
+    
+    Backend->>DB: Insert log into Models_History<br>(tokensUsed, modelUsed, userid)
+    DB-->>Backend: Log confirmed
+    
+    Backend-->>Frontend: Sends Final Result
+    Frontend-->>User: Displays Result in Dashboard

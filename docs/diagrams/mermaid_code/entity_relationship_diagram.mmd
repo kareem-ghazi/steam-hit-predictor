@@ -1,0 +1,65 @@
+erDiagram
+    User {
+        int userid PK
+        str firstname
+        str lastname
+        str email
+        int age
+        bool hasSubscription
+        str passwordHash
+    }
+
+    Game {
+        int gameid PK
+        string name
+        float price
+        string platforms
+        string genres
+        str description
+        datetime dateAdded
+        int gameOwner FK
+    }
+
+    Models_History {
+        int logid PK
+        int tokensUsed
+        int userid FK
+        int gameid FK
+        str modelUsed
+    }
+
+    Released_Games {
+        int rgameid PK
+        string name
+        float price
+        string platforms
+        string genres
+        float approval_rate
+        int negative_reviews_count
+        int positive_reviews_count
+        str description
+        datetime datePublished
+        int gamedevid FK
+        int gamepubid FK
+    }
+
+    Game_Developer {
+        int gamedevid PK
+        str name
+        str location
+        int gamesDeveloped
+    }
+
+    Game_Publisher {
+        int gamepubid PK
+        str name
+        str location
+        int gamesPublished
+    }
+
+    %% Relationships explicitly labeled with cardinalities (Software Ideas Modeler style)
+    User ||--o{ Game : "1 to 0..* (one to many)"
+    User ||--o{ Models_History : "1 to 0..* (one to many)"
+    Game ||--o{ Models_History : "1 to 0..* (one to many)"
+    Game_Developer ||--o{ Released_Games : "1 to 0..* (one to many)"
+    Game_Publisher ||--o{ Released_Games : "1 to 0..* (one to many)"
