@@ -31,6 +31,10 @@
     - `cleaned_data/train/`: Contains `games.csv` (22,376 rows, 27 columns with target `is_hit` at the end) and `games_descriptions.csv` (22,376 rows, 5 columns: `appid`, `short_description`, `about_the_game`, `detailed_description`, `clean_description`).
     - `cleaned_data/valid/`: Contains `games.csv` (2,797 rows, 27 columns) and `games_descriptions.csv` (2,797 rows, 5 columns).
     - `cleaned_data/test/`: Contains `games.csv` (2,798 rows, 27 columns) and `games_descriptions.csv` (2,798 rows, 5 columns).
+  - **XGBoost Classifier ([ml-pipeline/xgboost_train.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/ml-pipeline/xgboost_train.py)):**
+    - Enabled native categorical support (`enable_categorical=True`, `tree_method='hist'`) across all 7 categorical columns in the dataset (`developer`, `publisher`, `platforms`, `categories`, `genres`, `steamspy_tags`, `owners`) + 4 numerical features (`price`, `english`, `required_age`, `achievements`).
+    - Added early stopping monitoring validation loss (`early_stopping_rounds=15`, best iteration: 62, best validation logloss: 0.6226).
+    - Holdout test evaluation (2,798 games): Accuracy **66.55%**, Precision **68.86%**, Recall **73.18%**, F1-Score **70.95%**. Saved artifact to `saved_models/ml_models/xgboost_hit_predictor.pkl`.
 - **Phase 2: LLM Baselines & Containerization:**
   - Created `.env` file for Hugging Face authentication (`HF_TOKEN`).
   - Implemented `llm-pipeline/inference_baseline.py` using **Qwen3.5-0.8B** on GPU (`cuda:0`):

@@ -110,7 +110,7 @@ Please begin with Phase 1. Output the code, explain it briefly, and then output 
 * [x] Unify price format to USD using `currency.csv` exchange rates and apply `StandardScaler` to price (`price_scaled`, saved to `saved_models/ml_models/price_scaler.pkl`). Remove ordinal encoding and preserve raw categorical columns.
 * [x] In `generate_vibe_scores.py`, calculate accurate heuristic vibe scores (`hype_score`, `story_score`, `nostalgia_score`) derived strictly from non-description metadata (genres, categories, tags, publisher prestige, owners, price, release vintage, and player community approval rating) without using description text to prevent data leakage in LLM fine-tuning, integrated into `data_prep.py`.
 * [x] Split the cleaned dataset into three stratified folders in `cleaned_data/`: `cleaned_data/train/`, `cleaned_data/valid/`, and `cleaned_data/test/`, each containing 2 files: `games.csv` (train: 22,376, valid: 2,797, test: 2,798; 27 cols with target `is_hit` at end) and `games_descriptions.csv` (train: 22,376, valid: 2,797, test: 2,798; 5 cols: `appid`, `short_description`, `about_the_game`, `detailed_description`, `clean_description`).
-* [x] Train XGBoost Classifier using `cleaned_data/` for tabular classification with standard features alongside heuristic vibe scores.
+* [x] Train XGBoost Classifier using `cleaned_data/` with native categorical support (`enable_categorical=True`, `tree_method='hist'`) across all dataset categorical columns (`developer`, `publisher`, `platforms`, `categories`, `genres`, `steamspy_tags`, `owners`) + numerical features with early stopping on validation loss.
 
 #### Phase 2: LLM Baselines (llm-pipeline)
 
