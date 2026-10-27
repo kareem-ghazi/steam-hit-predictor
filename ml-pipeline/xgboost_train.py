@@ -94,23 +94,20 @@ def train_xgboost(
     trains the XGBoost Classifier with validation monitoring, evaluates on holdout test set,
     and persists the model bundle.
     """
-    train_path = os.path.join(data_dir, "train.csv")
-    valid_path = os.path.join(data_dir, "valid.csv")
-    test_path = os.path.join(data_dir, "test.csv")
+    train_path = os.path.join(data_dir, "train", "games.csv")
+    valid_path = os.path.join(data_dir, "valid", "games.csv")
+    test_path = os.path.join(data_dir, "test", "games.csv")
     encoder_path = os.path.join(model_save_dir, "ordinal_encoder.pkl")
     
-    # Check if cleaned data has publisher_encoded and english
+    # Check if cleaned data splits exist
     need_regenerate = False
     if not (os.path.exists(train_path) and os.path.exists(valid_path) and os.path.exists(test_path)):
         need_regenerate = True
-    else:
-        sample_df = pd.read_csv(train_path, nrows=5)
-        if "publisher_encoded" not in sample_df.columns or "english" not in sample_df.columns:
-            need_regenerate = True
             
     if need_regenerate:
-        print(f"Regenerating cleaned splits with publisher encoding and english column...")
-        train_df, valid_df, test_df, encoder = prepare_data(output_dir=data_dir, encoder_save_path=encoder_path)
+        print(f"Regenerating cleaned splits...")
+        attr_splits, desc_splits, scaler = prepare_data(output_dir=data_dir)
+        train_df, valid_df, test_df = attr_splits
     else:
         print(f"Loading cleaned splits from '{data_dir}/'...")
         train_df = pd.read_csv(train_path)

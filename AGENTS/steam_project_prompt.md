@@ -33,12 +33,17 @@ steam-hit-predictor/
 │   ├── artermiloff_steam_games_dataset/ # Kaggle March 2025 dataset
 │   ├── fronkongames_steam_games_dataset/ # Kaggle complete archive
 │   └── crainbramp_steam_dataset_2025/ # Kaggle 2025 analytics (CSV-only package)
-├── cleaned_data/                # Cleaned & stratified dataset splits
-│   ├── train.csv                # 80% train split (68,199 rows)
-│   ├── valid.csv                # 10% validation split (8,525 rows)
-│   └── test.csv                 # 10% test split (8,525 rows)
+├── cleaned_data/                # Cleaned & stratified two-folder dataset splits
+│   ├── attributes/              # Tabular attributes without descriptions (target is_hit at end)
+│   │   ├── train.csv            # 80% train split (22,376 rows, 27 cols)
+│   │   ├── valid.csv            # 10% valid split (2,797 rows, 27 cols)
+│   │   └── test.csv             # 10% test split (2,798 rows, 27 cols)
+│   └── descriptions/            # Textual descriptions (short, about, detailed, clean_desc)
+│       ├── train.csv            # 80% train split (22,376 rows, 5 cols)
+│       ├── valid.csv            # 10% valid split (2,797 rows, 5 cols)
+│       └── test.csv             # 10% test split (2,798 rows, 5 cols)
 ├── saved_models/                # Stores resulting model files
-│   ├── ml_models/               # XGBoost .pkl & OrdinalEncoder .pkl files
+│   ├── ml_models/               # XGBoost .pkl & price_scaler.pkl files
 │   └── llm_adapters/            # QLoRA weights
 ├── llm-pipeline/                
 │   ├── inference_baseline.py    # Baseline inference with RAM tracking (Qwen3.5-0.8B)
@@ -46,7 +51,7 @@ steam-hit-predictor/
 │   └── qlora_training.py     
 ├── generate_vibe_scores.py       # Heuristic Vibe Score generator (hype, story, nostalgia)
 ├── ml-pipeline/                 
-│   ├── data_prep.py             # Tabular & HTML description cleaning, Ordinal Encoding
+│   ├── data_prep.py             # Modular attribute loader, USD price scaler, review filtering, 3-folder splits
 │   ├── generate_vibe_scores.py  # Vibe score engine
 │   └── xgboost_train.py         # XGBoost training with publisher & english features
 ├── backend/                     
@@ -97,15 +102,15 @@ Please begin with Phase 1. Output the code, explain it briefly, and then output 
 
 #### Phase 1: Data Engineering & XGBoost Training (ml-pipeline)
 
-* [x] Harmonize and split raw datasets via `raw_data/merge_datasets.py` into `raw_data/dataset_attributes/` (153,163 games from crainbramp + reference datasets with 51 attribute CSVs) and load tabular & description attributes.
-* [x] Clean tabular dataset by removing duplicates, handling null values, and fixing formatting inconsistencies.
-* [x] Clean and prepare Steam descriptions (stripping HTML tags, unescaping HTML entities, normalizing text) and merge with tabular data.
-* [x] Engineer `approval_rate`: (Positive Ratings / Total Reviews).
-* [x] Engineer `rating_text`: Translate the `approval_rate` into text classes matching Steam's format (e.g., Overwhelmingly Positive, Very Positive, Mostly Positive, Mixed, Mostly Negative), taking total reviews into account.
-* [x] Engineer the target variable `is_hit`: 1 if `approval_rate` >= 0.80 and total reviews >= 50, else 0.
-* [x] Drop data leakage columns (positive/negative ratings, total reviews, approval_rate).
-* [x] Split the cleaned dataset into stratified train (80%), valid (10%), and test (10%) splits and save them as .csv files in `cleaned_data/`.
-* [x] In `generate_vibe_scores.py`, calculate accurate heuristic vibe scores (`hype_score`, `story_score`, `nostalgia_score`) derived from descriptions, tags, and metadata, integrated into `data_prep.py`. In `xgboost_train.py`, train an XGBoost Classifier using `cleaned_data/` for tabular classification with standard features (price, english, ordinal-encoded genres, platforms, publisher) alongside the heuristic vibe scores. Perform training with validation monitoring, compute holdout test accuracy/F1-score, and save the model as a `.pkl` file to `saved_models/ml_models/`.
+* [x] Harmonize and split raw datasets via `raw_data/merge_datasets.py` into `raw_data/dataset_attributes/` (153,163 games from crainbramp + reference datasets with 51 attribute CSVs).
+* [x] In `data_prep.py`, load attributes directly from `raw_data/dataset_attributes/`, clean tabular data, and drop rows missing developer or publisher entirely (no imputation).
+* [x] Filter games under 50 reviews first (`total_reviews >= 50`), yielding 27,971 robust, well-reviewed games.
+* [x] Clean and prepare Steam descriptions (stripping HTML tags, unescaping HTML entities, normalizing text) and create `clean_description`.
+* [x] Engineer `approval_rate`: (Positive Ratings / Total Reviews), `rating_text` Steam tiers, and target label `is_hit` (1 if `approval_rate` >= 0.80 else 0). Retain leakage telemetry columns for safe measures.
+* [x] Unify price format to USD using `currency.csv` exchange rates and apply `StandardScaler` to price (`price_scaled`, saved to `saved_models/ml_models/price_scaler.pkl`). Remove ordinal encoding and preserve raw categorical columns.
+* [x] In `generate_vibe_scores.py`, calculate accurate heuristic vibe scores (`hype_score`, `story_score`, `nostalgia_score`) derived strictly from non-description metadata (genres, categories, tags, publisher prestige, owners, price, release vintage) without using description text to prevent data leakage in LLM fine-tuning, integrated into `data_prep.py`.
+* [x] Split the cleaned dataset into three stratified folders in `cleaned_data/`: `cleaned_data/train/`, `cleaned_data/valid/`, and `cleaned_data/test/`, each containing 2 files: `games.csv` (train: 22,376, valid: 2,797, test: 2,798; 27 cols with target `is_hit` at end) and `games_descriptions.csv` (train: 22,376, valid: 2,797, test: 2,798; 5 cols: `appid`, `short_description`, `about_the_game`, `detailed_description`, `clean_description`).
+* [x] Train XGBoost Classifier using `cleaned_data/` for tabular classification with standard features alongside heuristic vibe scores.
 
 #### Phase 2: LLM Baselines (llm-pipeline)
 
