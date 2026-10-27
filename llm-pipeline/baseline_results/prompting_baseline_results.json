@@ -5,7 +5,7 @@
     "validity_rate": 100.0,
     "accuracy_rate": 66.7,
     "mean_absolute_error": 1.69,
-    "avg_latency_sec": 6.848,
+    "avg_latency_sec": 6.608,
     "runs": [
       {
         "raw_output": "```json\n{\n  \"hype_score\": 7.5,\n  \"story_score\": 6.0,\n  \"nostalgia_score\": 8.0\n}\n```",
@@ -20,7 +20,7 @@
           "story_score": 6.0,
           "nostalgia_score": 8.0
         },
-        "latency": 8.16182827949524,
+        "latency": 7.579882621765137,
         "appid": 2164780,
         "game": "Tile Town",
         "ground_truth": {
@@ -44,7 +44,7 @@
           "story_score": 7.0,
           "nostalgia_score": 5.5
         },
-        "latency": 6.999118328094482,
+        "latency": 6.5068559646606445,
         "appid": 1324340,
         "game": "Made in Abyss: Binary Star Falling into Darkness",
         "ground_truth": {
@@ -68,7 +68,7 @@
           "story_score": 6.0,
           "nostalgia_score": 5.0
         },
-        "latency": 6.4239702224731445,
+        "latency": 6.901708602905273,
         "appid": 582990,
         "game": "Space Fist",
         "ground_truth": {
@@ -92,7 +92,7 @@
           "story_score": 6.0,
           "nostalgia_score": 7.0
         },
-        "latency": 5.6782546043396,
+        "latency": 5.922786235809326,
         "appid": 1397390,
         "game": "The Break-In",
         "ground_truth": {
@@ -116,7 +116,7 @@
           "story_score": 7.0,
           "nostalgia_score": 5.5
         },
-        "latency": 6.9750776290893555,
+        "latency": 6.1308910846710205,
         "appid": 777650,
         "game": "Yet Another Research Dog",
         "ground_truth": {
@@ -135,7 +135,7 @@
     "validity_rate": 100.0,
     "accuracy_rate": 20.0,
     "mean_absolute_error": 2.94,
-    "avg_latency_sec": 5.344,
+    "avg_latency_sec": 5.286,
     "runs": [
       {
         "raw_output": "```json\n{\n  \"hype_score\": 8.5,\n  \"story_score\": 6.8,\n  \"nostalgia_score\": 7.2\n}\n```",
@@ -150,7 +150,7 @@
           "story_score": 6.8,
           "nostalgia_score": 7.2
         },
-        "latency": 6.726637363433838,
+        "latency": 6.1838343143463135,
         "appid": 2164780,
         "game": "Tile Town",
         "ground_truth": {
@@ -174,7 +174,7 @@
           "story_score": 8.2,
           "nostalgia_score": 7.8
         },
-        "latency": 4.757880687713623,
+        "latency": 4.5982584953308105,
         "appid": 1324340,
         "game": "Made in Abyss: Binary Star Falling into Darkness",
         "ground_truth": {
@@ -198,7 +198,7 @@
           "story_score": 6.8,
           "nostalgia_score": 8.2
         },
-        "latency": 4.2724289894104,
+        "latency": 4.587090015411377,
         "appid": 582990,
         "game": "Space Fist",
         "ground_truth": {
@@ -222,7 +222,7 @@
           "story_score": 7.8,
           "nostalgia_score": 8.2
         },
-        "latency": 6.302167654037476,
+        "latency": 6.285822153091431,
         "appid": 1397390,
         "game": "The Break-In",
         "ground_truth": {
@@ -246,7 +246,7 @@
           "story_score": 7.8,
           "nostalgia_score": 6.5
         },
-        "latency": 4.662984848022461,
+        "latency": 4.77560019493103,
         "appid": 777650,
         "game": "Yet Another Research Dog",
         "ground_truth": {
@@ -265,7 +265,7 @@
     "validity_rate": 100.0,
     "accuracy_rate": 13.3,
     "mean_absolute_error": 3.99,
-    "avg_latency_sec": 18.855,
+    "avg_latency_sec": 18.013,
     "runs": [
       {
         "raw_output": "Reasoning:\n- Story: A strategic exploration of medieval town-building and resource management on a hexagonal grid.\n- Hype: A unique indie strategy game with a charming aesthetic and a unique gameplay loop that feels both challenging and relaxing.\n- Nostalgia: A nostalgic homage to classic strategy games while offering a fresh, modern twist on the genre.\n```json\n{\"hype_score\": 9.5, \"story_score\": 8.0, \"nostalgia_score\": 9.0}\n```",
@@ -280,7 +280,7 @@
           "story_score": 8.0,
           "nostalgia_score": 9.0
         },
-        "latency": 16.03474736213684,
+        "latency": 15.406431198120117,
         "appid": 2164780,
         "game": "Tile Town",
         "ground_truth": {
@@ -304,7 +304,7 @@
           "story_score": 5.0,
           "nostalgia_score": 10.0
         },
-        "latency": 18.60785412788391,
+        "latency": 18.967150688171387,
         "appid": 1324340,
         "game": "Made in Abyss: Binary Star Falling into Darkness",
         "ground_truth": {
@@ -328,7 +328,7 @@
           "story_score": 5.0,
           "nostalgia_score": 10.0
         },
-        "latency": 18.144593238830566,
+        "latency": 18.02219820022583,
         "appid": 582990,
         "game": "Space Fist",
         "ground_truth": {
@@ -352,7 +352,7 @@
           "story_score": 5.0,
           "nostalgia_score": 10.0
         },
-        "latency": 18.450409412384033,
+        "latency": 17.519413232803345,
         "appid": 1397390,
         "game": "The Break-In",
         "ground_truth": {
@@ -376,7 +376,7 @@
           "story_score": 8.0,
           "nostalgia_score": 9.0
         },
-        "latency": 23.03752636909485,
+        "latency": 20.151848077774048,
         "appid": 777650,
         "game": "Yet Another Research Dog",
         "ground_truth": {

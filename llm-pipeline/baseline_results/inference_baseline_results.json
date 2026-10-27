@@ -1,79 +1,23 @@
 {
   "model_id": "Qwen/Qwen3.5-0.8B",
   "device": "cuda",
-  "timestamp": "2026-10-25 00:40:31",
-  "total_samples": 3,
-  "valid_json_count": 3,
+  "timestamp": "2026-10-28 01:06:53",
+  "total_samples": 5,
+  "valid_json_count": 5,
   "validity_rate": 100.0,
-  "avg_latency_sec": 5.998,
-  "avg_tokens_per_sec": 7.0,
+  "avg_latency_sec": 5.843,
+  "avg_tokens_per_sec": 7.1,
   "ram_summary": {
-    "peak_process_ram_gb": 2.231,
+    "peak_process_ram_gb": 2.068,
     "peak_gpu_vram_allocated_gb": 1.409,
-    "latest_system_ram_percent": 88.0
+    "latest_system_ram_percent": 80.0
   },
   "runs": [
     {
-      "appid": 695960,
-      "game_name": "Awakening: The Goblin Kingdom Collector's Edition",
-      "genres": "adventure;casual",
-      "description_snippet": "After overcoming the Dreamless Castle and Moonfell Wood, you have come to the rugged, mountainous snow-peaked Goblin Kingdom!",
-      "raw_output": "{\n  \"hype_score\": 6.5,\n  \"story_score\": 7.0,\n  \"nostalgia_score\": 5.5\n}",
-      "parsed_json": {
-        "hype_score": 6.5,
-        "story_score": 7.0,
-        "nostalgia_score": 5.5
-      },
-      "is_valid_json": true,
-      "scores": {
-        "hype_score": 6.5,
-        "story_score": 7.0,
-        "nostalgia_score": 5.5
-      },
-      "latency_seconds": 7.275,
-      "tokens_per_sec": 5.6,
-      "ram_usage": {
-        "process_ram_gb": 2.231,
-        "system_ram_used_gb": 13.22,
-        "system_ram_total_gb": 15.24,
-        "system_ram_percent": 86.8,
-        "gpu_vram_allocated_gb": 1.409,
-        "gpu_vram_reserved_gb": 1.486
-      }
-    },
-    {
-      "appid": 3483,
-      "game_name": "Peggle Extreme",
-      "genres": "casual;free to play",
-      "description_snippet": "Mayday! The Peggle Institute has been invaded by a host of other-worldly creatures. It's up to you, Peggle Master, to report to duty and shoot and bounce the critters to oblivion. Take your best shot ...",
-      "raw_output": "{\n  \"hype_score\": 8.5,\n  \"story_score\": 7.0,\n  \"nostalgia_score\": 6.5\n}",
-      "parsed_json": {
-        "hype_score": 8.5,
-        "story_score": 7.0,
-        "nostalgia_score": 6.5
-      },
-      "is_valid_json": true,
-      "scores": {
-        "hype_score": 8.5,
-        "story_score": 7.0,
-        "nostalgia_score": 6.5
-      },
-      "latency_seconds": 5.227,
-      "tokens_per_sec": 7.8,
-      "ram_usage": {
-        "process_ram_gb": 2.231,
-        "system_ram_used_gb": 13.28,
-        "system_ram_total_gb": 15.24,
-        "system_ram_percent": 87.1,
-        "gpu_vram_allocated_gb": 1.409,
-        "gpu_vram_reserved_gb": 1.486
-      }
-    },
-    {
-      "appid": 3332690,
-      "game_name": "Sweet Home 3: Look and Find Collector's Edition",
-      "genres": "casual",
-      "description_snippet": "Avi Games brings you the next part of the hidden object game 'Sweet Home: Look and Find'. Enjoy an even cozier collection of hidden-object tasks and mini games with 'Sweet Home Look and Find 3'! This ...",
+      "appid": 2164780,
+      "game_name": "Tile Town",
+      "genres": "casual;indie;strategy",
+      "description_snippet": "Tile Town is a chill strategy game set on a hexagonal grid. Plop down various building tiles to get the highest score possible, all while creating a colorful medieval town in the process. Unlock new l...",
       "raw_output": "{\n  \"hype_score\": 7.5,\n  \"story_score\": 6.0,\n  \"nostalgia_score\": 5.5\n}",
       "parsed_json": {
         "hype_score": 7.5,
@@ -86,13 +30,150 @@
         "story_score": 6.0,
         "nostalgia_score": 5.5
       },
+      "ground_truth_scores": {
+        "hype_score": 5.3,
+        "story_score": 3.9,
+        "nostalgia_score": 4.0
+      },
+      "latency_seconds": 7.265,
+      "tokens_per_sec": 5.6,
+      "ram_usage": {
+        "process_ram_gb": 2.068,
+        "system_ram_used_gb": 12.32,
+        "system_ram_total_gb": 15.24,
+        "system_ram_percent": 80.8,
+        "gpu_vram_allocated_gb": 1.409,
+        "gpu_vram_reserved_gb": 1.486
+      }
+    },
+    {
+      "appid": 1324340,
+      "game_name": "Made in Abyss: Binary Star Falling into Darkness",
+      "genres": "action",
+      "description_snippet": "Experience the awesome power of the Curse of the Abyss, as well as the astonishing, legendary entities known as primeval creatures. Prepare to glimpse the world of Riko and her friends.",
+      "raw_output": "{\n  \"hype_score\": 6.5,\n  \"story_score\": 7.0,\n  \"nostalgia_score\": 5.5\n}",
+      "parsed_json": {
+        "hype_score": 6.5,
+        "story_score": 7.0,
+        "nostalgia_score": 5.5
+      },
+      "is_valid_json": true,
+      "scores": {
+        "hype_score": 6.5,
+        "story_score": 7.0,
+        "nostalgia_score": 5.5
+      },
+      "ground_truth_scores": {
+        "hype_score": 5.5,
+        "story_score": 8.3,
+        "nostalgia_score": 4.1
+      },
+      "latency_seconds": 5.385,
+      "tokens_per_sec": 7.6,
+      "ram_usage": {
+        "process_ram_gb": 2.068,
+        "system_ram_used_gb": 12.3,
+        "system_ram_total_gb": 15.24,
+        "system_ram_percent": 80.7,
+        "gpu_vram_allocated_gb": 1.409,
+        "gpu_vram_reserved_gb": 1.486
+      }
+    },
+    {
+      "appid": 582990,
+      "game_name": "Space Fist",
+      "genres": "action;indie",
+      "description_snippet": "In the virtual world of Space Fist, you are a fighter challenging powerful enemies across different environments\uff0cplease enjoy waving your fists are ready to meet the challenges!",
+      "raw_output": "{\n  \"hype_score\": 7.5,\n  \"story_score\": 6.0,\n  \"nostalgia_score\": 5.0\n}",
+      "parsed_json": {
+        "hype_score": 7.5,
+        "story_score": 6.0,
+        "nostalgia_score": 5.0
+      },
+      "is_valid_json": true,
+      "scores": {
+        "hype_score": 7.5,
+        "story_score": 6.0,
+        "nostalgia_score": 5.0
+      },
+      "ground_truth_scores": {
+        "hype_score": 6.0,
+        "story_score": 4.5,
+        "nostalgia_score": 3.5
+      },
       "latency_seconds": 5.491,
       "tokens_per_sec": 7.5,
       "ram_usage": {
-        "process_ram_gb": 2.231,
-        "system_ram_used_gb": 13.41,
+        "process_ram_gb": 2.068,
+        "system_ram_used_gb": 12.2,
         "system_ram_total_gb": 15.24,
-        "system_ram_percent": 88.0,
+        "system_ram_percent": 80.0,
+        "gpu_vram_allocated_gb": 1.409,
+        "gpu_vram_reserved_gb": 1.486
+      }
+    },
+    {
+      "appid": 1397390,
+      "game_name": "The Break-In",
+      "genres": "action;indie;simulation",
+      "description_snippet": "Steal everything. Even the people. The Break-In lets you take whatever you want, from TVs to fridges to toilets. And all in 1-4 player co-op, VR and non VR. Select your getaway vehicle, anything from ...",
+      "raw_output": "{\n  \"hype_score\": 8.5,\n  \"story_score\": 6.0,\n  \"nostalgia_score\": 5.5\n}",
+      "parsed_json": {
+        "hype_score": 8.5,
+        "story_score": 6.0,
+        "nostalgia_score": 5.5
+      },
+      "is_valid_json": true,
+      "scores": {
+        "hype_score": 8.5,
+        "story_score": 6.0,
+        "nostalgia_score": 5.5
+      },
+      "ground_truth_scores": {
+        "hype_score": 7.8,
+        "story_score": 6.1,
+        "nostalgia_score": 4.6
+      },
+      "latency_seconds": 5.593,
+      "tokens_per_sec": 7.3,
+      "ram_usage": {
+        "process_ram_gb": 2.068,
+        "system_ram_used_gb": 12.21,
+        "system_ram_total_gb": 15.24,
+        "system_ram_percent": 80.1,
+        "gpu_vram_allocated_gb": 1.409,
+        "gpu_vram_reserved_gb": 1.486
+      }
+    },
+    {
+      "appid": 777650,
+      "game_name": "Yet Another Research Dog",
+      "genres": "casual;rpg;simulation;strategy",
+      "description_snippet": "The research dog is a newly graduated Ph.D.. His life-long dream is to become a great scientist, but the fortune is not on his side. After years of hard working, he is finally offered an intern positi...",
+      "raw_output": "{\n  \"hype_score\": 6.5,\n  \"story_score\": 7.0,\n  \"nostalgia_score\": 5.5\n}",
+      "parsed_json": {
+        "hype_score": 6.5,
+        "story_score": 7.0,
+        "nostalgia_score": 5.5
+      },
+      "is_valid_json": true,
+      "scores": {
+        "hype_score": 6.5,
+        "story_score": 7.0,
+        "nostalgia_score": 5.5
+      },
+      "ground_truth_scores": {
+        "hype_score": 5.0,
+        "story_score": 4.8,
+        "nostalgia_score": 3.5
+      },
+      "latency_seconds": 5.479,
+      "tokens_per_sec": 7.5,
+      "ram_usage": {
+        "process_ram_gb": 2.068,
+        "system_ram_used_gb": 12.19,
+        "system_ram_total_gb": 15.24,
+        "system_ram_percent": 80.0,
         "gpu_vram_allocated_gb": 1.409,
         "gpu_vram_reserved_gb": 1.486
       }
