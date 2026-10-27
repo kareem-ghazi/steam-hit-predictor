@@ -4,7 +4,7 @@
 
 ## Core Project Requirements
 
-1. **Dataset:** We are using the Kaggle [Steam Store Games dataset](https://www.kaggle.com/datasets/nikdavis/steam-store-games).
+1. **Dataset:** We are using the Kaggle [Steam Store Games dataset](https://www.kaggle.com/datasets/nikdavis/steam-store-games) augmented with multi-source Steam archives (Crainbramp 2025 multi-modal package, Artermiloff 2025, and Fronkongames).
 2. **Code Style:** Clean, simple, and stripped of unnecessary enterprise boilerplate, suitable for an undergraduate project.
 3. **Execution Rule:** This is a multi-phase project. You must strictly output the code and instructions for **ONE phase at a time**.
 4. **State Tracking:** You must maintain the checklist provided below. At the end of every response, you must print the full checklist, mark the completed tasks with an `[x]`, and ask for my confirmation before proceeding to the next unchecked task. Do not jump ahead. Before finishing a task, update PROJECT_STATE.md. Overwrite it with a brief summary of the completed components, any newly installed dependencies, the current data flow, and exactly what file we are supposed to work on next.
@@ -19,10 +19,16 @@ Here is the architecture and directory structure we are building towards.
 steam-hit-predictor/
 ├── Dockerfile                   # Docker containerization definition
 ├── requirements.txt             # Pinned project dependencies
-├── raw_data/                    # Raw multi-dataset folder & unified merged files
-│   ├── steam.csv                # Unified merged tabular dataset (85,249 games, 18 columns)
-│   ├── steam_description_data.csv # Unified merged descriptions (85,249 games, 4 columns)
-│   ├── merge_datasets.py        # Harmonization & merge script
+├── raw_data/                    # Raw multi-dataset folder & modular attribute files
+│   ├── dataset_attributes/      # Modular columnar attribute files (each containing [appid, <attribute>])
+│   │   ├── name.csv
+│   │   ├── price.csv
+│   │   ├── genres.csv
+│   │   ├── developer.csv
+│   │   ├── publisher.csv
+│   │   ├── short_description.csv
+│   │   └── ...                  # (51 individual attribute CSV files, 153,163 games)
+│   ├── merge_datasets.py        # Harmonization, crainbramp game integration & modular split script
 │   ├── steam_games_cleaned/     # Original reference dataset
 │   ├── artermiloff_steam_games_dataset/ # Kaggle March 2025 dataset
 │   ├── fronkongames_steam_games_dataset/ # Kaggle complete archive
@@ -91,7 +97,7 @@ Please begin with Phase 1. Output the code, explain it briefly, and then output 
 
 #### Phase 1: Data Engineering & XGBoost Training (ml-pipeline)
 
-* [x] Load the `steam.csv` dataset from the `raw_data/` folder in `data_prep.py`.
+* [x] Harmonize and split raw datasets via `raw_data/merge_datasets.py` into `raw_data/dataset_attributes/` (153,163 games from crainbramp + reference datasets with 51 attribute CSVs) and load tabular & description attributes.
 * [x] Clean tabular dataset by removing duplicates, handling null values, and fixing formatting inconsistencies.
 * [x] Clean and prepare Steam descriptions (stripping HTML tags, unescaping HTML entities, normalizing text) and merge with tabular data.
 * [x] Engineer `approval_rate`: (Positive Ratings / Total Reviews).
