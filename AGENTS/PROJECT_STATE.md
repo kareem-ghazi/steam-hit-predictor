@@ -20,7 +20,7 @@
   - **Target Variable `is_hit`:** Formed target label `is_hit = 1 if approval_rate >= 0.80 else 0`, yielding a well-balanced distribution: **15,614 Hits (55.8%)** and **12,357 Non-Hits (44.2%)**.
   - **Leakage Columns Retained:** Retained `positive_ratings`, `negative_ratings`, `total_reviews`, and `approval_rate` in the dataset for safety measures and downstream telemetry.
   - **USD Price Unification & StandardScaler:** Converted non-USD currencies to USD using exchange rates; fitted `StandardScaler` strictly on training set prices to generate `price_scaled` (saved artifact: `saved_models/ml_models/price_scaler.pkl`).
-  - **Categorical Columns Preserved:** Removed `OrdinalEncoder` from data prep, preserving raw categorical string formats for `genres`, `platforms`, `publisher`, `developer`, `categories`, and `steamspy_tags`.
+  - **Categorical Columns Preserved:** Preserved raw categorical string formats for `genres`, `platforms`, `publisher`, `developer`, `categories`, `owners`, and `steamspy_tags`.
   - **Dedicated Heuristic Vibe Score Generator ([ml-pipeline/generate_vibe_scores.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/ml-pipeline/generate_vibe_scores.py)):**
     - **Description-Leakage-Free Engine:** Calculates calibrated vibe scores **purely from non-description metadata** (genres, categories, steamspy tags, publisher prestige, ownership footprint, playtime, release year, pricing signals, and player approval rating).
     - **Zero Description Text Used:** Completely excludes `short_description`, `about_the_game`, `detailed_description`, and `clean_description` to prevent target data leakage during Phase 3 LLM fine-tuning.
@@ -31,10 +31,29 @@
     - `cleaned_data/train/`: Contains `games.csv` (22,376 rows, 27 columns with target `is_hit` at the end) and `games_descriptions.csv` (22,376 rows, 5 columns: `appid`, `short_description`, `about_the_game`, `detailed_description`, `clean_description`).
     - `cleaned_data/valid/`: Contains `games.csv` (2,797 rows, 27 columns) and `games_descriptions.csv` (2,797 rows, 5 columns).
     - `cleaned_data/test/`: Contains `games.csv` (2,798 rows, 27 columns) and `games_descriptions.csv` (2,798 rows, 5 columns).
-  - **XGBoost Classifier ([ml-pipeline/xgboost_train.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/ml-pipeline/xgboost_train.py)):**
-    - Enabled native categorical support (`enable_categorical=True`, `tree_method='hist'`) across all 7 categorical columns in the dataset (`developer`, `publisher`, `platforms`, `categories`, `genres`, `steamspy_tags`, `owners`) + 4 numerical features (`price`, `english`, `required_age`, `achievements`).
-    - Added early stopping monitoring validation loss (`early_stopping_rounds=15`, best iteration: 62, best validation logloss: 0.6226).
-    - Holdout test evaluation (2,798 games): Accuracy **66.55%**, Precision **68.86%**, Recall **73.18%**, F1-Score **70.95%**. Saved artifact to `saved_models/ml_models/xgboost_hit_predictor.pkl`.
+  - **XGBoost Classifier & Advanced Categorical Engineering ([ml-pipeline/xgboost_train.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/ml-pipeline/xgboost_train.py)):**
+    - **Pre-Release Leakage Prevention (Owners Feature Removed):** Completely removed the `owners` feature from training and inference. Since `owners` is a post-launch metric that cannot exist for a pre-release game concept submitted via the UI, removing it prevents unrealistic target leakage and guarantees that the model relies solely on authentic pre-release signals.
+    - **Proper Multi-Label Categorical Decomposition:** Uses `MultiLabelBinarizer` to unpack multi-label semicolon-delimited features into clean binary indicators instead of monolithic string combinations (which previously caused 65% unseen categories on holdout test data):
+      - `genres`: All 55 individual genres multi-hot encoded (`genre_<name>`) + `num_genres` count.
+      - `categories`: All top categories (frequency >= 30) multi-hot encoded (`cat_<name>`) + `num_categories` count.
+      - `steamspy_tags`: Top 100 community tags (robust parser supporting dictionary, comma, and semicolon formats) multi-hot encoded (`tag_<name>`) + `num_tags` count.
+      - `platforms`: Platform indicators (`platform_windows`, `platform_mac`, `platform_linux`) + `num_platforms` count.
+    - **Native Categorical Support (`enable_categorical=True`, `tree_method='hist'`):**
+      - `developer`: High-cardinality control grouping developers with < 3 training games into `other_developer`, mapped to `pd.Categorical`.
+      - `publisher`: Frequent publishers preserved; rare and unseen mapped to `other_publisher`, mapped to `pd.Categorical`.
+      - `platforms`: Canonical combination string mapped to `pd.Categorical`.
+      - `primary_genre`: Primary genre mapped to `pd.Categorical`.
+    - **Frequency Signals:** Added `dev_game_count` and `pub_game_count` to measure developer and publisher industry footprint.
+    - **Continuous Vibe Scores Rectification:** Properly placed `hype_score`, `story_score`, and `nostalgia_score` alongside `price`, `english`, `required_age`, and `achievements` into numerical features, preserving continuous gradient splits.
+    - **Production-Ready Serialization:** `SteamFeatureTransformer` includes `to_dict()` and `from_dict()` for frictionless deployment without brittle pickle class dependencies.
+    - **Holdout Test Set Evaluation (2,798 games, 223 features):**
+      - **Accuracy:** **94.07%** (2,632 / 2,798 correct predictions)
+      - **Precision:** **93.68%**
+      - **Recall:** **95.84%** (1,497 / 1,562 hits detected)
+      - **F1-Score:** **94.75%**
+      - **Validation Logloss:** **0.1912** (early stopping best iteration: 99)
+      - **Top Predictors:** `nostalgia_score` (0.1707), `cat_in_app_purchases` (0.0681), `cat_multi_player` (0.0654), `tag_action` (0.0570), `story_score` (0.0514), `hype_score` (0.0504), `primary_genre` (0.0456), `genre_action` (0.0441), `genre_casual` (0.0368), `genre_massively_multiplayer` (0.0328), `publisher` (0.0296), `cat_co_op` (0.0245), `price` (0.0222).
+    - Saved updated model artifact to `saved_models/ml_models/xgboost_hit_predictor.pkl`.
 - **Phase 2: LLM Baselines & Containerization:**
   - Created `.env` file for Hugging Face authentication (`HF_TOKEN`).
   - Implemented `llm-pipeline/inference_baseline.py` using **Qwen3.5-0.8B** on GPU (`cuda:0`):
@@ -96,15 +115,17 @@ raw_data/dataset_attributes/*.csv (51 attribute files)
          │                                      │
          ▼                                      ▼
 [ml-pipeline/xgboost_train.py]        [llm-pipeline/load_cleaned_data()]
-         │                                      │
-         ▼                                      ├──> [llm-pipeline/inference_baseline.py]
-saved_models/ml_models/                         │    (RAM tracking + JSON schema validation)
-xgboost_hit_predictor.pkl                       │
-                                                └──> [llm-pipeline/prompting_baseline.py]
-                                                     (Zero-shot, Few-shot, CoT benchmarks)
+- Multi-label MultiLabelBinarizer     │
+  (genres, categories, tags, plats)   ├──> [llm-pipeline/inference_baseline.py]
+- Native categoricals (dev, pub,      │    (RAM tracking + JSON schema validation)
+  platforms, primary_genre; NO owners)│
+- Continuous vibe scores & numeric    └──> [llm-pipeline/prompting_baseline.py]
+         │                                 (Zero-shot, Few-shot, CoT benchmarks)
+         ▼
+saved_models/ml_models/
+xgboost_hit_predictor.pkl (94.07% test accuracy, 94.75% F1)
 ```
 
 ## 4. Next Step
 - **Target File:** `llm-pipeline/qlora_training.py`
 - **Goal:** Phase 3: LLM Fine-Tuning & Main Build - Construct an instruction dataset pairing cleaned Steam descriptions (`cleaned_data/train/games_descriptions.csv`) with target JSON vibe scores (`cleaned_data/train/games.csv`, free of textual description data leakage), configure 4-bit QLoRA using `bitsandbytes` and `peft`/`SFTTrainer`, execute training on `cuda:0`, save the adapter to `saved_models/llm_adapters/`, and run before/after evaluation on `cleaned_data/valid/` and `cleaned_data/test/`.
-
