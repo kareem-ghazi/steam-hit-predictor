@@ -53,11 +53,13 @@ steam-hit-predictor/
 │   ├── inference_baseline.py    # Baseline inference with RAM tracking & cleaned_data 3-split loader
 │   ├── prompting_baseline.py    # Zero-shot, Few-shot, CoT benchmark on cleaned_data
 │   └── qlora_training.py     
-├── generate_vibe_scores.py       # Heuristic Vibe Score generator (hype, story, nostalgia)
-├── ml-pipeline/                 
-│   ├── data_prep.py             # Full data preparation pipeline (attribute loader, scaler, multi-label & categorical feature preparation, 3-folder splits)
-│   ├── generate_vibe_scores.py  # Vibe score engine
-│   └── xgboost_train.py         # Streamlined XGBoost training directly consuming pre-prepared cleaned_data/
+├── ml-pipeline/                 # Modular, refactored machine learning pipeline
+│   ├── config.py                # Modeling thresholds, FX exchange rates, rating tiers & token parser
+│   ├── cleaner.py               # Raw attribute ingestion, HTML cleaning, USD conversion & data filtering
+│   ├── feature_transformer.py   # Multi-label binarization, native categoricals & noise pruning
+│   ├── data_prep.py             # Pipeline orchestrator (feature engineering, ordered DataFrame assembly, 80/10/10 split)
+│   ├── generate_vibe_scores.py  # Description-leakage-free heuristic vibe score engine
+│   └── xgboost_train.py         # Streamlined XGBoost training with feature exemption control & evaluation
 ├── backend/                     
 │   ├── main.py                  
 │   └── requirements.txt         
@@ -113,8 +115,8 @@ Please begin with Phase 1. Output the code, explain it briefly, and then output 
 * [x] Engineer `approval_rate`: (Positive Ratings / Total Reviews), `rating_text` Steam tiers, and target label `is_hit` (1 if `approval_rate` >= 0.80 else 0). Retain leakage telemetry columns for safe measures.
 * [x] Unify price format to USD using `currency.csv` exchange rates and apply `StandardScaler` to price (`price_scaled`, saved to `saved_models/ml_models/price_scaler.pkl`). Remove ordinal encoding and preserve raw categorical columns.
 * [x] In `generate_vibe_scores.py`, calculate accurate heuristic vibe scores (`hype_score`, `story_score`, `nostalgia_score`) derived strictly from non-description metadata (genres, categories, tags, publisher prestige, owners, price, release vintage, and player community approval rating) without using description text to prevent data leakage in LLM fine-tuning, integrated into `data_prep.py`.
-* [x] Split and prepare the cleaned dataset into three stratified folders in `cleaned_data/`: `cleaned_data/train/`, `cleaned_data/valid/`, and `cleaned_data/test/`, strictly sorted by `appid` ascending, each containing 2 files: `games.csv` (train: 22,248, valid: 2,781, test: 2,781; already prepared with 200 model features, zero all-zero columns, pruned noise/bracket artifacts, and target `is_hit` at end) and `games_descriptions.csv` (train: 22,248, valid: 2,781, test: 2,781; 5 cols: `appid`, `short_description`, `about_the_game`, `detailed_description`, `clean_description`).
-* [x] Train XGBoost Classifier directly consuming pre-prepared features from `cleaned_data/` (multi-hot binary indicators for multi-label `genres`, `categories`, and `steamspy_tags`; native categorical support `enable_categorical=True` for `developer`, `publisher`, `platforms`, and `primary_genre` with `owners` removed to prevent post-launch leakage; continuous numerical vibe scores and metadata) with early stopping on validation loss, achieving 96.40% holdout test accuracy and 96.83% F1-score.
+* [x] Split and prepare the cleaned dataset into three stratified folders in `cleaned_data/`: `cleaned_data/train/`, `cleaned_data/valid/`, and `cleaned_data/test/`, strictly sorted by `appid` ascending with logically ordered columns and regular integer review ratings, each containing 2 files: `games.csv` (train: 22,248, valid: 2,781, test: 2,781; already prepared with 200 model features, zero all-zero columns, pruned noise/bracket artifacts, and target `is_hit` at end) and `games_descriptions.csv` (train: 22,248, valid: 2,781, test: 2,781; 5 cols: `appid`, `short_description`, `about_the_game`, `detailed_description`, `clean_description`).
+* [x] Train XGBoost Classifier directly consuming pre-prepared features from `cleaned_data/` with support for feature exemption control (`exempt_features` / `--exempt-features`), native categorical support `enable_categorical=True` for `developer`, `publisher`, `platforms`, and `primary_genre` (`owners` removed to prevent post-launch leakage), and early stopping on validation loss, achieving 96.40% holdout test accuracy and 96.83% F1-score.
 
 #### Phase 2: LLM Baselines (llm-pipeline)
 
