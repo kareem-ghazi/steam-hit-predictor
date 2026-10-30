@@ -15,7 +15,7 @@ class SteamFeatureTransformer:
     Transforms Steam tabular features for ML modeling:
     - Multi-label fields (genres, categories, steamspy_tags, platforms) -> clean multi-hot binary indicators.
     - Low-frequency noise, bracketed artifacts, and corrupt non-ASCII tokens are pruned.
-    - High-cardinality nominal fields (developer, publisher) -> native pd.Categorical + entity frequency signals.
+    - High-cardinality nominal fields (developer, publisher) -> native pd.Categorical.
     - Vibe scores and price -> continuous float signals.
     - Owners is excluded to prevent post-launch target leakage.
     - All-zero features across training data are pruned.
@@ -133,11 +133,10 @@ class SteamFeatureTransformer:
         # 4. Assembled feature list in clear logical order
         preliminary_names = (
             self.num_cols +
-            ["dev_game_count", "pub_game_count"] +
-            ["platform_windows", "platform_mac", "platform_linux", "num_platforms"] +
-            self.genre_cols + ["num_genres"] +
-            self.cat_binary_cols + ["num_categories"] +
-            self.tag_binary_cols + ["num_tags"] +
+            ["platform_windows", "platform_mac", "platform_linux"] +
+            self.genre_cols +
+            self.cat_binary_cols +
+            self.tag_binary_cols +
             self.cat_cols
         )
         self.feature_names = preliminary_names
@@ -167,18 +166,15 @@ class SteamFeatureTransformer:
         feature_dict["story_score"] = pd.to_numeric(df_copy.get("story_score", 5.0), errors="coerce").fillna(5.0).values.astype(float)
         feature_dict["nostalgia_score"] = pd.to_numeric(df_copy.get("nostalgia_score", 5.0), errors="coerce").fillna(5.0).values.astype(float)
 
-        # 2. Entity frequency counts as integers
+        # 2. Entity series
         dev_series = df_copy["developer"].fillna("Unknown").astype(str).str.strip().str.lower()
         pub_series = df_copy["publisher"].fillna("Unknown").astype(str).str.strip().str.lower()
-        feature_dict["dev_game_count"] = dev_series.map(self.dev_counts).fillna(1).values.astype(int)
-        feature_dict["pub_game_count"] = pub_series.map(self.pub_counts).fillna(1).values.astype(int)
 
         # 3. Platforms
         plat_tokens = self._tokenize_delimited(df_copy.get("platforms", pd.Series([""] * len(df_copy), index=df_copy.index)))
         feature_dict["platform_windows"] = plat_tokens.apply(lambda toks: 1 if "windows" in toks else 0).values.astype(int)
         feature_dict["platform_mac"] = plat_tokens.apply(lambda toks: 1 if "mac" in toks else 0).values.astype(int)
         feature_dict["platform_linux"] = plat_tokens.apply(lambda toks: 1 if "linux" in toks else 0).values.astype(int)
-        feature_dict["num_platforms"] = plat_tokens.apply(len).values.astype(int)
 
         # 4. Multi-hot Genres
         genre_tokens = self._tokenize_delimited(df_copy.get("genres", pd.Series([""] * len(df_copy), index=df_copy.index)))
@@ -186,7 +182,6 @@ class SteamFeatureTransformer:
         genre_mat = self.genre_mlb.transform(genre_tokens.apply(lambda toks: [g for g in toks if g in genre_set])).astype(int)
         for i, col_name in enumerate(self.genre_cols):
             feature_dict[col_name] = genre_mat[:, i]
-        feature_dict["num_genres"] = genre_tokens.apply(len).values.astype(int)
 
         # 5. Multi-hot Categories
         cat_tokens = self._tokenize_delimited(df_copy.get("categories", pd.Series([""] * len(df_copy), index=df_copy.index)))
@@ -194,7 +189,6 @@ class SteamFeatureTransformer:
         cat_mat = self.cat_mlb.transform(cat_tokens.apply(lambda toks: [c for c in toks if c in cat_set])).astype(int)
         for i, col_name in enumerate(self.cat_binary_cols):
             feature_dict[col_name] = cat_mat[:, i]
-        feature_dict["num_categories"] = cat_tokens.apply(len).values.astype(int)
 
         # 6. Multi-hot Tags
         tag_tokens = self._extract_tags(df_copy.get("steamspy_tags", pd.Series([""] * len(df_copy), index=df_copy.index)))
@@ -202,7 +196,6 @@ class SteamFeatureTransformer:
         tag_mat = self.tag_mlb.transform(tag_tokens.apply(lambda toks: [t for t in toks if t in tag_set])).astype(int)
         for i, col_name in enumerate(self.tag_binary_cols):
             feature_dict[col_name] = tag_mat[:, i]
-        feature_dict["num_tags"] = tag_tokens.apply(len).values.astype(int)
 
         # 7. Native Categoricals
         dev_cats = self.cat_categories["developer"]

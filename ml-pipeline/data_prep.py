@@ -6,7 +6,7 @@ from typing import Tuple, Optional, List
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PARENT_DIR = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
@@ -67,13 +67,12 @@ def build_prepared_games_dataframe(
     3. Core Attributes (english, required_age, achievements, owners)
     4. Reference Categoricals (genres, categories, steamspy_tags)
     5. Continuous Vibe Scores (hype_score, story_score, nostalgia_score)
-    6. Entity & Multi-label Counts (dev_game_count, pub_game_count, num_platforms, num_genres, num_categories, num_tags)
-    7. Multi-hot Platform Indicators (platform_windows, platform_mac, platform_linux)
-    8. Multi-hot Genre Indicators (genre_*)
-    9. Multi-hot Category Indicators (cat_*)
-    10. Multi-hot Tag Indicators (tag_*)
-    11. Review Telemetry (positive_ratings, negative_ratings, total_reviews, approval_rate, rating_text)
-    12. Target (is_hit as final column)
+    6. Multi-hot Platform Indicators (platform_windows, platform_mac, platform_linux)
+    7. Multi-hot Genre Indicators (genre_*)
+    8. Multi-hot Category Indicators (cat_*)
+    9. Multi-hot Tag Indicators (tag_*)
+    10. Review Telemetry (positive_ratings, negative_ratings, total_reviews, approval_rate, rating_text)
+    11. Target (is_hit as final column)
     """
     cols_dict = {}
 
@@ -115,32 +114,27 @@ def build_prepared_games_dataframe(
         elif col in raw_split_df.columns:
             cols_dict[col] = raw_split_df[col].astype(float)
 
-    # 6. Entity & Multi-label Counts (integers)
-    for col in ["dev_game_count", "pub_game_count", "num_platforms", "num_genres", "num_categories", "num_tags"]:
-        if col in transformed_features_df.columns:
-            cols_dict[col] = transformed_features_df[col].astype(int)
-
-    # 7. Platform indicators
+    # 6. Platform indicators
     for col in ["platform_windows", "platform_mac", "platform_linux"]:
         if col in transformed_features_df.columns:
             cols_dict[col] = transformed_features_df[col].astype(int)
 
-    # 8. Genre indicators (sorted)
+    # 7. Genre indicators (sorted)
     genre_cols = sorted([c for c in transformed_features_df.columns if c.startswith("genre_")])
     for col in genre_cols:
         cols_dict[col] = transformed_features_df[col].astype(int)
 
-    # 9. Category indicators (sorted)
+    # 8. Category indicators (sorted)
     cat_cols = sorted([c for c in transformed_features_df.columns if c.startswith("cat_")])
     for col in cat_cols:
         cols_dict[col] = transformed_features_df[col].astype(int)
 
-    # 10. Tag indicators (sorted)
+    # 9. Tag indicators (sorted)
     tag_cols = sorted([c for c in transformed_features_df.columns if c.startswith("tag_")])
     for col in tag_cols:
         cols_dict[col] = transformed_features_df[col].astype(int)
 
-    # 11. Review Telemetry (reviews as pure integers)
+    # 10. Review Telemetry (reviews as pure integers)
     for col in ["positive_ratings", "negative_ratings", "total_reviews"]:
         if col in raw_split_df.columns:
             cols_dict[col] = raw_split_df[col].astype(int)
@@ -149,7 +143,7 @@ def build_prepared_games_dataframe(
     if "rating_text" in raw_split_df.columns:
         cols_dict["rating_text"] = raw_split_df["rating_text"]
 
-    # 12. Target (final column)
+    # 11. Target (final column)
     if "is_hit" in raw_split_df.columns:
         cols_dict["is_hit"] = raw_split_df["is_hit"].astype(int)
 
@@ -164,8 +158,8 @@ def split_and_save_data(
     valid_ratio: float = 0.1,
     test_ratio: float = 0.1,
     seed: int = 42
-) -> Tuple[Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame], Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame], Tuple[StandardScaler, SteamFeatureTransformer]]:
-    """Splits cleaned data into train/valid/test, scales price, fits transformer, and saves sorted splits."""
+) -> Tuple[Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame], Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame], Tuple[MinMaxScaler, SteamFeatureTransformer]]:
+    """Splits cleaned data into train/valid/test, scales price with MinMaxScaler, fits transformer, and saves sorted splits."""
     os.makedirs(output_dir, exist_ok=True)
     train_dir = os.path.join(output_dir, "train")
     valid_dir = os.path.join(output_dir, "valid")
@@ -182,8 +176,8 @@ def split_and_save_data(
     valid_share = valid_ratio / temp_ratio
     valid_df, test_df = train_test_split(temp_df, test_size=(1.0 - valid_share), random_state=seed, stratify=temp_df["is_hit"])
 
-    # 2. StandardScaler for price (fit on train split only)
-    price_scaler = StandardScaler()
+    # 2. MinMaxScaler for price (fit on train split only)
+    price_scaler = MinMaxScaler(feature_range=(0, 1))
     price_scaler.fit(train_df[["price"]])
 
     for split in [train_df, valid_df, test_df]:
@@ -198,7 +192,7 @@ def split_and_save_data(
     scaler_save_path = os.path.join(model_dir_abs, "price_scaler.pkl")
     with open(scaler_save_path, "wb") as f:
         pickle.dump(price_scaler, f)
-    print(f"Saved price StandardScaler to: {scaler_save_path}")
+    print(f"Saved price MinMaxScaler to: {scaler_save_path}")
 
     # 3. Fit SteamFeatureTransformer strictly on train split
     print("Fitting SteamFeatureTransformer on train split in data_prep...")

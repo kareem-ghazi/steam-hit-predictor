@@ -17,13 +17,15 @@
   - **Modular Pipeline Split:** Refactored monolithic preparation code into focused, maintainable, single-responsibility modules:
     - [ml-pipeline/config.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/ml-pipeline/config.py): Constants, FX exchange rates, Steam rating tiers logic, and token delimiter parsing.
     - [ml-pipeline/cleaner.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/ml-pipeline/cleaner.py): Attribute loading, HTML description unescaping and cleaning, price normalization, and strict data filtering.
-    - [ml-pipeline/feature_transformer.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/ml-pipeline/feature_transformer.py): `SteamFeatureTransformer` class for multi-label binarization, native categorical handling, frequency count signals, and automated all-zero feature pruning.
-    - [ml-pipeline/data_prep.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/ml-pipeline/data_prep.py): High-level pipeline coordinator orchestrating feature engineering, ordered DataFrame construction, stratified 80/10/10 splitting, saving, and loading.
+    - [ml-pipeline/feature_transformer.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/ml-pipeline/feature_transformer.py): `SteamFeatureTransformer` class for multi-label binarization, native categorical handling, and automated all-zero feature pruning.
+    - [ml-pipeline/data_prep.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/ml-pipeline/data_prep.py): High-level pipeline coordinator orchestrating feature engineering, ordered DataFrame construction, stratified 80/10/10 splitting, MinMaxScaler price scaling, saving, and loading.
     - [ml-pipeline/generate_vibe_scores.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/ml-pipeline/generate_vibe_scores.py): Heuristic vibe score engine derived purely from metadata (zero textual description leakage).
   - **Strict Entity & Volume Filtering:** Dropped rows missing `developer` or `publisher` entirely (no imputation), and filtered out games with fewer than 50 total reviews first (`total_reviews >= 50`), yielding **27,810 robust games**.
   - **Target Variable `is_hit`:** Formed target label `is_hit = 1 if approval_rate >= 0.80 else 0`, yielding **15,552 Hits (55.9%)** and **12,258 Non-Hits (44.1%)**.
+  - **MinMax Scaled Price:** Replaced StandardScaler with `MinMaxScaler(feature_range=(0, 1))` fitted strictly on the train split, generating bounded `price_scaled` [0.0, 1.0] and serialized to [saved_models/ml_models/price_scaler.pkl](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/saved_models/ml_models/price_scaler.pkl).
+  - **Removal of Entity & Multi-label Counts:** Completely removed the 6 count features (`dev_game_count`, `pub_game_count`, `num_platforms`, `num_genres`, `num_categories`, `num_tags`) from the feature transformer, dataframe builder, and exported datasets, reducing the model feature space from 200 to 194.
   - **Integer Casting for Discrete Counts & Ratings:**
-    - Converted float reviews and counts to regular integers: `positive_ratings`, `negative_ratings`, `total_reviews`, `achievements`, `required_age`, `english`, `dev_game_count`, `pub_game_count`, `num_platforms`, `num_genres`, `num_categories`, `num_tags`, and all binary indicators (`platform_*`, `genre_*`, `cat_*`, `tag_*`, `is_hit`).
+    - Converted float reviews and counts to regular integers: `positive_ratings`, `negative_ratings`, `total_reviews`, `achievements`, `required_age`, `english`, and all binary indicators (`platform_*`, `genre_*`, `cat_*`, `tag_*`, `is_hit`).
     - True continuous columns preserved as floats: `price`, `price_scaled`, `approval_rate`, `hype_score`, `story_score`, `nostalgia_score`.
   - **Structured Logical Column Ordering:**
     - Ordered all columns in `cleaned_data/` splits into intuitive, cohesive groups:
@@ -32,26 +34,28 @@
       3. Attributes (`english`, `required_age`, `achievements`, `owners`)
       4. Reference Strings (`genres`, `categories`, `steamspy_tags`)
       5. Continuous Vibe Scores (`hype_score`, `story_score`, `nostalgia_score`)
-      6. Entity & Multi-label Counts (`dev_game_count`, `pub_game_count`, `num_platforms`, `num_genres`, `num_categories`, `num_tags`)
-      7. Multi-hot Indicators (`platform_*`, `genre_*`, `cat_*`, `tag_*`)
-      8. Review Telemetry (`positive_ratings`, `negative_ratings`, `total_reviews`, `approval_rate`, `rating_text`)
-      9. Target (`is_hit` as the final column).
+      6. Multi-hot Platform Indicators (`platform_windows`, `platform_mac`, `platform_linux`)
+      7. Multi-hot Genre Indicators (`genre_*`)
+      8. Multi-hot Category Indicators (`cat_*`)
+      9. Multi-hot Tag Indicators (`tag_*`)
+      10. Review Telemetry (`positive_ratings`, `negative_ratings`, `total_reviews`, `approval_rate`, `rating_text`)
+      11. Target (`is_hit` as the final column).
   - **Strict Ascending Sort by `appid`:** Verified `appid.is_monotonic_increasing == True` across `train`, `valid`, and `test` splits, with exact 1-to-1 row alignment between `games.csv` and `games_descriptions.csv`.
   - **Dataset Split Dimensions (`cleaned_data/`):**
-    - `cleaned_data/train/`: `games.csv` (22,248 rows, 215 cols, 200 model features, target `is_hit` at end) and `games_descriptions.csv` (22,248 rows, 5 cols).
-    - `cleaned_data/valid/`: `games.csv` (2,781 rows, 215 cols, 200 model features) and `games_descriptions.csv` (2,781 rows, 5 cols).
-    - `cleaned_data/test/`: `games.csv` (2,781 rows, 215 cols, 200 model features) and `games_descriptions.csv` (2,781 rows, 5 cols).
+    - `cleaned_data/train/`: `games.csv` (22,248 rows, 209 cols, 194 model features, target `is_hit` at end) and `games_descriptions.csv` (22,248 rows, 5 cols).
+    - `cleaned_data/valid/`: `games.csv` (2,781 rows, 209 cols, 194 model features) and `games_descriptions.csv` (2,781 rows, 5 cols).
+    - `cleaned_data/test/`: `games.csv` (2,781 rows, 209 cols, 194 model features) and `games_descriptions.csv` (2,781 rows, 5 cols).
 - **Streamlined XGBoost Classifier with Feature Exemption ([ml-pipeline/xgboost_train.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/ml-pipeline/xgboost_train.py)):**
-  - **Feature Exemption Control:** Added `exempt_features` argument and `--exempt-features` CLI parameter (supporting exact column names and wildcard patterns like `tag_*` or `dev_game_count,pub_game_count`).
-  - **Native Categorical Support:** Trained with `enable_categorical=True` and `tree_method='hist'`.
-  - **Holdout Test Set Evaluation (2,781 games, 200 features):**
-    - **Accuracy:** **96.40%** (2,681 / 2,781 correct predictions)
-    - **Precision:** **95.50%**
-    - **Recall:** **98.20%** (1,527 / 1,555 hits detected)
-    - **F1-Score:** **96.83%**
-    - **Validation Logloss:** **0.1106** (early stopping best iteration: 297)
-    - **Top Predictors:** `nostalgia_score` (0.1596), `cat_multi_player` (0.0846), `genre_action` (0.0654), `genre_casual` (0.0640), `story_score` (0.0588), `genre_massively_multiplayer` (0.0576), `hype_score` (0.0481), `cat_mmo` (0.0367), `primary_genre` (0.0327), `publisher` (0.0265).
-  - Saved updated model artifact to `saved_models/ml_models/xgboost_hit_predictor.pkl`.
+  - **Feature Exemption Control:** Added `exempt_features` argument and `--exempt-features` CLI parameter (supporting exact column names and wildcard patterns like `tag_*` or `price_scaled`).
+  - **Native Categorical Support:** Trained with `enable_categorical=True` and `tree_method='hist'` on 4 native categorical columns (`developer`, `publisher`, `platforms`, `primary_genre`).
+  - **Holdout Test Set Evaluation (2,781 games, 194 features):**
+    - **Accuracy:** **96.26%** (2,677 / 2,781 correct predictions)
+    - **Precision:** **95.43%**
+    - **Recall:** **98.01%** (1,524 / 1,555 hits detected)
+    - **F1-Score:** **96.70%**
+    - **Validation Logloss:** **0.1096** (early stopping best iteration: 299)
+    - **Top Predictors:** `nostalgia_score` (0.1729), `genre_massively_multiplayer` (0.0959), `cat_multi_player` (0.0716), `story_score` (0.0612), `hype_score` (0.0520), `primary_genre` (0.0367), `cat_mmo` (0.0341), `genre_casual` (0.0339), `genre_free_to_play` (0.0300), `publisher` (0.0267).
+  - Saved updated model artifact to [saved_models/ml_models/xgboost_hit_predictor.pkl](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/saved_models/ml_models/xgboost_hit_predictor.pkl).
 - **Phase 2: LLM Baselines & Containerization:**
   - Created `.env` file for Hugging Face authentication (`HF_TOKEN`).
   - Implemented `llm-pipeline/inference_baseline.py` using **Qwen3.5-0.8B** on GPU (`cuda:0`):
@@ -91,21 +95,22 @@ raw_data/dataset_attributes/*.csv (51 attribute files)
            - Computes approval_rate, rating_text, is_hit
            - Retains review leakage columns for safety
            - Generates vibe scores via generate_vibe_scores.py (no text leakage)
-           - Fits SteamFeatureTransformer (config.py, feature_transformer.py)
+           - MinMax scales price to [0, 1] on train split -> price_scaler.pkl
+           - Fits SteamFeatureTransformer (194 features, counts removed)
            - Sorts splits strictly by appid ascending
            - Assembles ordered games.csv & games_descriptions.csv
            - Persists price_scaler.pkl and feature_transformer.pkl
                        │
                        ▼
-          cleaned_data/ (Pre-prepared with 200 features, sorted by appid)
+          cleaned_data/ (Pre-prepared with 194 features, sorted by appid)
           ├── train/
-          │   ├── games.csv              (22,248 rows, 215 cols, 200 model features, target is_hit at end)
+          │   ├── games.csv              (22,248 rows, 209 cols, 194 model features, target is_hit at end)
           │   └── games_descriptions.csv (22,248 rows, 5 cols: appid, short, about, detailed, clean)
           ├── valid/
-          │   ├── games.csv              (2,781 rows, 215 cols, 200 model features)
+          │   ├── games.csv              (2,781 rows, 209 cols, 194 model features)
           │   └── games_descriptions.csv (2,781 rows, 5 cols)
           └── test/
-              ├── games.csv              (2,781 rows, 215 cols, 200 model features)
+              ├── games.csv              (2,781 rows, 209 cols, 194 model features)
               └── games_descriptions.csv (2,781 rows, 5 cols)
                        │
          ┌─────────────┴────────────────────────┐
@@ -119,7 +124,7 @@ raw_data/dataset_attributes/*.csv (51 attribute files)
          │                            └──> [llm-pipeline/prompting_baseline.py]
          ▼                                 (Zero-shot, Few-shot, CoT benchmarks)
 saved_models/ml_models/
-xgboost_hit_predictor.pkl (96.40% test accuracy, 96.83% F1)
+xgboost_hit_predictor.pkl (96.26% test accuracy, 96.70% F1)
 ```
 
 ## 4. Next Step
