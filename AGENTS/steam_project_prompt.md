@@ -33,16 +33,16 @@ steam-hit-predictor/
 │   ├── artermiloff_steam_games_dataset/ # Kaggle March 2025 dataset
 │   ├── fronkongames_steam_games_dataset/ # Kaggle complete archive
 │   └── crainbramp_steam_dataset_2025/ # Kaggle 2025 analytics (CSV-only package)
-├── cleaned_data/                # Cleaned & stratified three-folder dataset architecture
+├── cleaned_data/                # Cleaned & stratified three-folder dataset architecture (strictly sorted by appid)
 │   ├── train/                   # 80% train split
-│   │   ├── games.csv            # 22,376 rows, 27 cols (target is_hit at end)
-│   │   └── games_descriptions.csv # 22,376 rows, 5 cols (appid, short, about, detailed, clean_description)
+│   │   ├── games.csv            # 22,248 rows, 215 cols (200 model features, target is_hit at end)
+│   │   └── games_descriptions.csv # 22,248 rows, 5 cols (appid, short, about, detailed, clean_description)
 │   ├── valid/                   # 10% validation split
-│   │   ├── games.csv            # 2,797 rows, 27 cols
-│   │   └── games_descriptions.csv # 2,797 rows, 5 cols
+│   │   ├── games.csv            # 2,781 rows, 215 cols (200 model features)
+│   │   └── games_descriptions.csv # 2,781 rows, 5 cols
 │   └── test/                    # 10% test split
-│       ├── games.csv            # 2,798 rows, 27 cols
-│       └── games_descriptions.csv # 2,798 rows, 5 cols
+│       ├── games.csv            # 2,781 rows, 215 cols (200 model features)
+│       └── games_descriptions.csv # 2,781 rows, 5 cols
 ├── saved_models/                # Stores resulting model files
 │   ├── ml_models/               # XGBoost .pkl & price_scaler.pkl files
 │   └── llm_adapters/            # QLoRA weights
@@ -55,9 +55,9 @@ steam-hit-predictor/
 │   └── qlora_training.py     
 ├── generate_vibe_scores.py       # Heuristic Vibe Score generator (hype, story, nostalgia)
 ├── ml-pipeline/                 
-│   ├── data_prep.py             # Modular attribute loader, USD price scaler, review filtering, 3-folder splits
+│   ├── data_prep.py             # Full data preparation pipeline (attribute loader, scaler, multi-label & categorical feature preparation, 3-folder splits)
 │   ├── generate_vibe_scores.py  # Vibe score engine
-│   └── xgboost_train.py         # XGBoost training with multi-hot & native categorical feature engineering
+│   └── xgboost_train.py         # Streamlined XGBoost training directly consuming pre-prepared cleaned_data/
 ├── backend/                     
 │   ├── main.py                  
 │   └── requirements.txt         
@@ -113,8 +113,8 @@ Please begin with Phase 1. Output the code, explain it briefly, and then output 
 * [x] Engineer `approval_rate`: (Positive Ratings / Total Reviews), `rating_text` Steam tiers, and target label `is_hit` (1 if `approval_rate` >= 0.80 else 0). Retain leakage telemetry columns for safe measures.
 * [x] Unify price format to USD using `currency.csv` exchange rates and apply `StandardScaler` to price (`price_scaled`, saved to `saved_models/ml_models/price_scaler.pkl`). Remove ordinal encoding and preserve raw categorical columns.
 * [x] In `generate_vibe_scores.py`, calculate accurate heuristic vibe scores (`hype_score`, `story_score`, `nostalgia_score`) derived strictly from non-description metadata (genres, categories, tags, publisher prestige, owners, price, release vintage, and player community approval rating) without using description text to prevent data leakage in LLM fine-tuning, integrated into `data_prep.py`.
-* [x] Split the cleaned dataset into three stratified folders in `cleaned_data/`: `cleaned_data/train/`, `cleaned_data/valid/`, and `cleaned_data/test/`, each containing 2 files: `games.csv` (train: 22,376, valid: 2,797, test: 2,798; 27 cols with target `is_hit` at end) and `games_descriptions.csv` (train: 22,376, valid: 2,797, test: 2,798; 5 cols: `appid`, `short_description`, `about_the_game`, `detailed_description`, `clean_description`).
-* [x] Train XGBoost Classifier using `cleaned_data/` with proper categorical feature engineering (multi-hot binary indicators for multi-label `genres`, `categories`, and `steamspy_tags`; native categorical support `enable_categorical=True` for `developer`, `publisher`, `platforms`, and `primary_genre` with `owners` removed to prevent post-launch leakage; continuous numerical vibe scores and metadata) with early stopping on validation loss.
+* [x] Split and prepare the cleaned dataset into three stratified folders in `cleaned_data/`: `cleaned_data/train/`, `cleaned_data/valid/`, and `cleaned_data/test/`, strictly sorted by `appid` ascending, each containing 2 files: `games.csv` (train: 22,248, valid: 2,781, test: 2,781; already prepared with 200 model features, zero all-zero columns, pruned noise/bracket artifacts, and target `is_hit` at end) and `games_descriptions.csv` (train: 22,248, valid: 2,781, test: 2,781; 5 cols: `appid`, `short_description`, `about_the_game`, `detailed_description`, `clean_description`).
+* [x] Train XGBoost Classifier directly consuming pre-prepared features from `cleaned_data/` (multi-hot binary indicators for multi-label `genres`, `categories`, and `steamspy_tags`; native categorical support `enable_categorical=True` for `developer`, `publisher`, `platforms`, and `primary_genre` with `owners` removed to prevent post-launch leakage; continuous numerical vibe scores and metadata) with early stopping on validation loss, achieving 96.40% holdout test accuracy and 96.83% F1-score.
 
 #### Phase 2: LLM Baselines (llm-pipeline)
 
