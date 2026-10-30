@@ -43,8 +43,6 @@ raw_data/*.csv
 raw_data/**/*.csv
 raw_data/*.zip
 raw_data/*.tar.gz
-cleaned_data/*.csv
-cleaned_data/**/*.csv
 !raw_data/.gitkeep
 !cleaned_data/.gitkeep
 !raw_data/dataset_attributes/DATA_CARD.md
