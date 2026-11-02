@@ -26,9 +26,11 @@ from peft import (
 )
 from trl import SFTTrainer, SFTConfig
 from datasets import Dataset
+from tqdm import tqdm
 
 load_dotenv()
 logging.getLogger("transformers").setLevel(logging.ERROR)
+logging.getLogger("bitsandbytes").setLevel(logging.ERROR)
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PARENT_DIR = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
@@ -157,7 +159,7 @@ def format_instruction_prompt(
 def prepare_hf_training_dataset(df: pd.DataFrame, tokenizer: Any) -> Dataset:
     """Converts paired DataFrame into Hugging Face Dataset formatted for SFTTrainer."""
     records = []
-    for _, row in df.iterrows():
+    for _, row in tqdm(df.iterrows(), total=len(df), desc="Formatting training dataset", unit="game"):
         name = str(row.get("name", "Unknown Game"))
         genres = str(row.get("genres", "Indie"))
         desc = str(row.get("clean_description", ""))
@@ -257,7 +259,7 @@ def evaluate_model_on_dataset(
 
     model.eval()
 
-    for idx, row in df_eval.iterrows():
+    for idx, row in tqdm(df_eval.iterrows(), total=total_samples, desc=f"Evaluating [{label}]", unit="game"):
         name = str(row.get("name", "Unknown Game"))
         genres = str(row.get("genres", "Indie"))
         desc = str(row.get("clean_description", ""))
@@ -547,9 +549,9 @@ def main():
     parser.add_argument("--model-id", type=str, default="Qwen/Qwen3.5-0.8B", help="Base model identifier")
     parser.add_argument("--data-dir", type=str, default="cleaned_data", help="Cleaned dataset directory")
     parser.add_argument("--output-dir", type=str, default="saved_models/llm_adapters/qwen_steam_vibe_8bit", help="Adapter output directory")
-    parser.add_argument("--max-train-samples", type=int, default=300, help="Number of training samples to use")
-    parser.add_argument("--max-eval-samples", type=int, default=15, help="Number of holdout test samples for evaluation")
-    parser.add_argument("--epochs", type=int, default=1, help="Training epochs")
+    parser.add_argument("--max-train-samples", type=int, default=1000, help="Number of training samples to use")
+    parser.add_argument("--max-eval-samples", type=int, default=10, help="Number of holdout test samples for evaluation")
+    parser.add_argument("--epochs", type=int, default=5, help="Training epochs")
     parser.add_argument("--batch-size", type=int, default=2, help="Per-device train batch size")
     parser.add_argument("--grad-accum", type=int, default=4, help="Gradient accumulation steps")
     parser.add_argument("--lr", type=float, default=2e-4, help="Learning rate")
