@@ -1,0 +1,41 @@
+{
+  "model_id": "Qwen/Qwen3.5-0.8B",
+  "quantization": "8-bit (BitsAndBytesConfig load_in_8bit=True)",
+  "top_p": 0.9,
+  "temperature": 0.7,
+  "lora_rank": 16,
+  "lora_alpha": 32,
+  "training_samples": 300,
+  "evaluation_samples": 15,
+  "training_epochs": 1,
+  "final_train_loss": 1.2086,
+  "training_duration_sec": 338.04,
+  "adapter_save_path": "C:\\Users\\kareemghazi\\Desktop\\steam-hit-predictor\\saved_models\\llm_adapters\\qwen_steam_vibe_8bit",
+  "before_finetuning": {
+    "label": "Before Fine-Tuning (Base Model)",
+    "total_samples": 15,
+    "valid_json_count": 15,
+    "validity_rate_pct": 100.0,
+    "mae": 1.93,
+    "accuracy_within_tolerance_pct": 60.0,
+    "avg_latency_sec": 19.528,
+    "top_p": 0.9,
+    "temperature": 0.7
+  },
+  "after_finetuning": {
+    "label": "After Fine-Tuning (QLoRA 8-Bit Adapter)",
+    "total_samples": 15,
+    "valid_json_count": 15,
+    "validity_rate_pct": 100.0,
+    "mae": 1.42,
+    "accuracy_within_tolerance_pct": 75.56,
+    "avg_latency_sec": 25.572,
+    "top_p": 0.9,
+    "temperature": 0.7
+  },
+  "improvement": {
+    "mae_reduction": 0.51,
+    "accuracy_gain_pct": 15.56,
+    "validity_gain_pct": 0.0
+  }
+}
