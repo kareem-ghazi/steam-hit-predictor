@@ -67,17 +67,20 @@
   - **Adapted `llm-pipeline` to Three-Split `cleaned_data/` Dataset Architecture:**
     - Seamlessly loads and merges game attributes and descriptions directly from `cleaned_data/` (`train/`, `valid/`, `test/` pairing `games.csv` with `games_descriptions.csv` on `appid`).
   - Created root [requirements.txt](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/requirements.txt) and root [Dockerfile](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/Dockerfile).
-- **Phase 3: 8-Bit QLoRA Fine-Tuning & Main Build ([llm-pipeline/qlora_training.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/llm-pipeline/qlora_training.py)):**
+- **Phase 3: Optimized 8-Bit QLoRA Fine-Tuning & Main Build ([llm-pipeline/qlora_training.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/llm-pipeline/qlora_training.py)):**
   - **BitsAndBytes 8-Bit Quantization:** Loaded base model `Qwen/Qwen3.5-0.8B` in 8-bit mode (`BitsAndBytesConfig(load_in_8bit=True)`), verified running on NVIDIA GeForce RTX 4060 Laptop GPU.
-  - **Modified Nucleus Sampling (`top_p`):** Configured and modified the `top_p=0.9` parameter (with `temperature=0.7`, `do_sample=True`) across model `generation_config` and generation sampling.
+  - **Hardware-Accelerated Mixed Precision:** Enabled `bf16=True` in `SFTConfig` and model loading, utilizing RTX 4060's native bfloat16 tensor cores for accelerated training and lower memory overhead.
+  - **Vectorized Dataset Pre-formatting:** Replaced sequential row-by-row iteration with Hugging Face `Dataset.map(batched=True, num_proc=4)`, eliminating CPU bottleneck and parallelizing prompt construction.
+  - **Batched Evaluation with `torch.compile()` Acceleration:** Implemented left-padding batched generation (`eval_batch_size=4`) and PyTorch 2.0 `torch.compile()` kernel acceleration, dropping per-game generation latency from ~22s down to **4.20s / game** (>5x speedup).
+  - **Modified Nucleus Sampling (`top_p`):** Configured and modified the `top_p=0.9` parameter (with `temperature=0.7`, `do_sample=True`) across model `generation_config` and batched generation sampling.
   - **LoRA Configuration:** Attached Low-Rank Adaptation using PEFT with hyperparameters: $r=16, \alpha=32$, dropout=0.05, target modules `["q_proj", "k_proj", "v_proj", "o_proj"]`, configuring 1,081,344 trainable parameters (0.14% of the base model).
-  - **Dataset Pairing & Instruction Formatting:** Formatted training instruction pairs pairing cleaned descriptions from `cleaned_data/train/games_descriptions.csv` with non-leakage ground-truth vibe scores from `cleaned_data/train/games.csv`.
-  - **Training Loop with SFTTrainer:** Executed fine-tuning on GPU with `SFTTrainer` and `SFTConfig` (batch size 2, gradient accumulation 4, learning rate 2e-4). Final training loss dropped to 1.2086, with token accuracy reaching 84.3%.
+  - **Training Loop with SFTTrainer:** Executed fine-tuning on GPU with `SFTTrainer` and `SFTConfig` (batch size 2, gradient accumulation 4, learning rate 2e-4, `bf16=True`). Final training loss dropped to 1.2015, with token accuracy reaching 84.3%.
   - **Adapter Persistence:** Saved fine-tuned LoRA adapter weights and tokenizer to [saved_models/llm_adapters/](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/saved_models/llm_adapters/) and [saved_models/llm_adapters/qwen_steam_vibe_8bit/](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/saved_models/llm_adapters/qwen_steam_vibe_8bit/).
-  - **Before vs After Holdout Evaluation Benchmark:**
+  - **Before vs After Holdout Evaluation Benchmark (20 holdout test games):**
     - **JSON Schema Validity:** 100.0% -> 100.0%
-    - **Mean Absolute Error (MAE):** 1.93 -> **1.42** (0.51 MAE reduction vs consensus)
-    - **Accuracy (+/- 2.0 tolerance):** 60.0% -> **75.6%** (+15.6% improvement)
+    - **Mean Absolute Error (MAE):** 1.98 -> **1.44** (0.54 MAE reduction vs consensus)
+    - **Accuracy (+/- 2.0 tolerance):** 58.3% -> **73.3%** (+15.0% improvement)
+    - **Per-Game Evaluation Latency:** **4.201s** (Batched x4 with `torch.compile()`)
     - Metrics serialized to [llm-pipeline/baseline_results/qlora_training_results.json](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/llm-pipeline/baseline_results/qlora_training_results.json).
 
 ## 2. Dependencies & Runtime

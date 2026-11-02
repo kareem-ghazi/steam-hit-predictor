@@ -156,27 +156,72 @@ def format_instruction_prompt(
         return f"{system_instruction}\n\nUser: {user_content}\n\nAssistant:"
 
 
-def prepare_hf_training_dataset(df: pd.DataFrame, tokenizer: Any) -> Dataset:
-    """Converts paired DataFrame into Hugging Face Dataset formatted for SFTTrainer."""
-    records = []
-    for _, row in tqdm(df.iterrows(), total=len(df), desc="Formatting training dataset", unit="game"):
-        name = str(row.get("name", "Unknown Game"))
-        genres = str(row.get("genres", "Indie"))
-        desc = str(row.get("clean_description", ""))
-        scores = {
-            "hype_score": float(row["hype_score"]),
-            "story_score": float(row["story_score"]),
-            "nostalgia_score": float(row["nostalgia_score"])
-        }
-        formatted_text = format_instruction_prompt(
-            tokenizer=tokenizer,
-            game_name=name,
-            genres=genres,
-            description=desc,
-            target_scores=scores
+def prepare_hf_training_dataset(
+    df: pd.DataFrame,
+    tokenizer: Any,
+    num_proc: Optional[int] = None
+) -> Dataset:
+    """
+    Converts paired DataFrame into Hugging Face Dataset formatted for SFTTrainer
+    using vectorized batched .map() across CPU cores instead of slow sequential iteration.
+    """
+    keep_cols = ["name", "genres", "clean_description", "hype_score", "story_score", "nostalgia_score"]
+    filtered_df = df[[c for c in keep_cols if c in df.columns]].copy()
+    dataset = Dataset.from_pandas(filtered_df, preserve_index=False)
+
+    if num_proc is None:
+        cpu_count = os.cpu_count() or 1
+        num_proc = max(1, min(4, cpu_count))
+
+    def batch_format_prompts(batch: Dict[str, List[Any]]) -> Dict[str, List[str]]:
+        names = batch.get("name", ["Unknown Game"] * len(batch["clean_description"]))
+        genres_list = batch.get("genres", ["Indie"] * len(batch["clean_description"]))
+        descriptions = batch.get("clean_description", [""] * len(batch["clean_description"]))
+        hype_scores = batch.get("hype_score", [5.0] * len(batch["clean_description"]))
+        story_scores = batch.get("story_score", [5.0] * len(batch["clean_description"]))
+        nostalgia_scores = batch.get("nostalgia_score", [5.0] * len(batch["clean_description"]))
+
+        formatted_texts = []
+        for name, genres, desc, hype, story, nostalgia in zip(
+            names, genres_list, descriptions, hype_scores, story_scores, nostalgia_scores
+        ):
+            scores = {
+                "hype_score": float(hype),
+                "story_score": float(story),
+                "nostalgia_score": float(nostalgia)
+            }
+            text = format_instruction_prompt(
+                tokenizer=tokenizer,
+                game_name=str(name),
+                genres=str(genres),
+                description=str(desc),
+                target_scores=scores
+            )
+            formatted_texts.append(text)
+        return {"text": formatted_texts}
+
+    print(f"Vectorizing & pre-formatting instruction dataset using .map(batched=True, num_proc={num_proc})...")
+    try:
+        formatted_dataset = dataset.map(
+            batch_format_prompts,
+            batched=True,
+            batch_size=1000,
+            num_proc=num_proc,
+            remove_columns=dataset.column_names,
+            desc="Vectorizing instruction dataset"
         )
-        records.append({"text": formatted_text})
-    return Dataset.from_list(records)
+    except Exception as e:
+        print(f"Multiprocessing map fallback to num_proc=1 ({e})")
+        formatted_dataset = dataset.map(
+            batch_format_prompts,
+            batched=True,
+            batch_size=1000,
+            num_proc=1,
+            remove_columns=dataset.column_names,
+            desc="Vectorizing instruction dataset"
+        )
+
+    return formatted_dataset
 
 
 def extract_json_payload(raw_text: str) -> Optional[Dict[str, Any]]:
@@ -246,64 +291,113 @@ def evaluate_model_on_dataset(
     top_p: float = 0.9,
     temperature: float = 0.7,
     max_new_tokens: int = 60,
+    eval_batch_size: int = 4,
+    use_compile: bool = True,
     label: str = "Model"
 ) -> Dict[str, Any]:
-    """Evaluates model prediction accuracy and validity against ground-truth vibe scores with top-p sampling."""
-    print(f"\n--- Running Evaluation: {label} ({len(df_eval)} samples, top_p={top_p}, temp={temperature}) ---")
+    """
+    Evaluates model prediction accuracy and validity against ground-truth vibe scores
+    using batched evaluation, torch.compile(), and left-padding generation acceleration.
+    """
+    print(f"\n--- Running Batched Evaluation: {label} ({len(df_eval)} samples, batch_size={eval_batch_size}, top_p={top_p}, temp={temperature}) ---")
+    
+    # Enable torch.compile() if requested
+    eval_model = model
+    if use_compile and hasattr(torch, "compile"):
+        try:
+            print(f"Applying torch.compile() to {label} for kernel execution speedup...")
+            eval_model = torch.compile(model)
+        except Exception as e:
+            print(f"Note: torch.compile() fallback to eager execution: {e}")
+            eval_model = model
+
+    eval_model.eval()
+
+    # Left-padding is required for batched autoregressive generation
+    orig_padding_side = tokenizer.padding_side
+    tokenizer.padding_side = "left"
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    records = df_eval.to_dict(orient="records")
+    total_samples = len(records)
     valid_count = 0
-    total_samples = len(df_eval)
     all_errors: List[float] = []
     within_tolerance_count = 0
     total_eval_points = 0
     latencies: List[float] = []
 
-    model.eval()
+    num_batches = (total_samples + eval_batch_size - 1) // eval_batch_size
+    batch_indices = [
+        range(i, min(i + eval_batch_size, total_samples))
+        for i in range(0, total_samples, eval_batch_size)
+    ]
 
-    for idx, row in tqdm(df_eval.iterrows(), total=total_samples, desc=f"Evaluating [{label}]", unit="game"):
-        name = str(row.get("name", "Unknown Game"))
-        genres = str(row.get("genres", "Indie"))
-        desc = str(row.get("clean_description", ""))
-        gt_scores = {
-            "hype_score": float(row["hype_score"]),
-            "story_score": float(row["story_score"]),
-            "nostalgia_score": float(row["nostalgia_score"])
-        }
+    for b_idx in tqdm(batch_indices, total=num_batches, desc=f"Evaluating [{label}] (Batched)", unit="batch"):
+        batch_records = [records[i] for i in b_idx]
+        prompts = [
+            format_instruction_prompt(
+                tokenizer=tokenizer,
+                game_name=str(r.get("name", "Unknown Game")),
+                genres=str(r.get("genres", "Indie")),
+                description=str(r.get("clean_description", "")),
+                target_scores=None
+            )
+            for r in batch_records
+        ]
 
-        prompt = format_instruction_prompt(tokenizer, name, genres, desc, target_scores=None)
-        inputs = tokenizer(prompt, return_tensors="pt").to(device)
+        inputs = tokenizer(
+            prompts,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
+            max_length=512
+        ).to(device)
 
         start_t = time.time()
         with torch.no_grad():
-            output_tokens = model.generate(
+            output_tokens = eval_model.generate(
                 **inputs,
                 max_new_tokens=max_new_tokens,
                 do_sample=True,
                 top_p=top_p,
                 temperature=temperature,
-                pad_token_id=tokenizer.eos_token_id
+                pad_token_id=tokenizer.pad_token_id or tokenizer.eos_token_id,
+                eos_token_id=tokenizer.eos_token_id
             )
         elapsed = time.time() - start_t
-        latencies.append(elapsed)
+        per_item_latency = elapsed / max(len(batch_records), 1)
 
-        new_tokens = output_tokens[0][inputs["input_ids"].shape[1]:]
-        raw_output = tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
+        prompt_len = inputs["input_ids"].shape[1]
+        for idx_in_batch, r in enumerate(batch_records):
+            latencies.append(per_item_latency)
+            gt_scores = {
+                "hype_score": float(r["hype_score"]),
+                "story_score": float(r["story_score"]),
+                "nostalgia_score": float(r["nostalgia_score"])
+            }
 
-        parsed = extract_json_payload(raw_output)
-        is_valid, validated_scores = validate_vibe_scores(parsed)
+            new_tokens = output_tokens[idx_in_batch][prompt_len:]
+            raw_output = tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
 
-        if is_valid:
-            valid_count += 1
-            for k in ["hype_score", "story_score", "nostalgia_score"]:
-                err = abs(validated_scores[k] - gt_scores[k])
-                all_errors.append(err)
-                if err <= 2.0:
-                    within_tolerance_count += 1
-                total_eval_points += 1
-        else:
-            # Penalize invalid formatting with max default error (5.0)
-            for _ in range(3):
-                all_errors.append(5.0)
-                total_eval_points += 1
+            parsed = extract_json_payload(raw_output)
+            is_valid, validated_scores = validate_vibe_scores(parsed)
+
+            if is_valid:
+                valid_count += 1
+                for k in ["hype_score", "story_score", "nostalgia_score"]:
+                    err = abs(validated_scores[k] - gt_scores[k])
+                    all_errors.append(err)
+                    if err <= 2.0:
+                        within_tolerance_count += 1
+                    total_eval_points += 1
+            else:
+                for _ in range(3):
+                    all_errors.append(5.0)
+                    total_eval_points += 1
+
+    # Restore tokenizer padding side
+    tokenizer.padding_side = orig_padding_side
 
     validity_rate = (valid_count / max(total_samples, 1)) * 100.0
     mae = sum(all_errors) / max(len(all_errors), 1)
@@ -318,6 +412,7 @@ def evaluate_model_on_dataset(
         "mae": round(mae, 2),
         "accuracy_within_tolerance_pct": round(acc_pct, 2),
         "avg_latency_sec": round(avg_latency, 3),
+        "eval_batch_size": eval_batch_size,
         "top_p": top_p,
         "temperature": temperature
     }
@@ -326,7 +421,7 @@ def evaluate_model_on_dataset(
     print(f"  * JSON Validity Rate: {validity_rate:.1f}% ({valid_count}/{total_samples})")
     print(f"  * Mean Absolute Error (MAE): {mae:.2f}")
     print(f"  * Accuracy (+/- 2.0 tolerance): {acc_pct:.1f}%")
-    print(f"  * Avg Latency: {avg_latency:.3f}s / game")
+    print(f"  * Avg Latency: {avg_latency:.3f}s / game (Batched x{eval_batch_size})")
     return results
 
 
@@ -335,7 +430,9 @@ def run_qlora_training(
     data_dir: str = "cleaned_data",
     output_dir: str = "saved_models/llm_adapters/qwen_steam_vibe_8bit",
     max_train_samples: int = 300,
-    max_eval_samples: int = 15,
+    max_eval_samples: int = 20,
+    eval_batch_size: int = 4,
+    use_compile: bool = True,
     epochs: int = 1,
     batch_size: int = 2,
     grad_accum: int = 4,
@@ -345,33 +442,55 @@ def run_qlora_training(
     lora_dropout: float = 0.05,
     top_p: float = 0.9,
     temperature: float = 0.7,
+    bf16: Optional[bool] = None,
+    fp16: Optional[bool] = None,
+    num_proc: Optional[int] = None,
     seed: int = 42
 ) -> Dict[str, Any]:
     """
-    Executes the Phase 3 LLM Fine-Tuning pipeline:
+    Executes the optimized Phase 3 LLM Fine-Tuning pipeline:
     1. Loads cleaned training & holdout evaluation splits from cleaned_data/.
     2. Initializes Qwen3.5-0.8B with 8-bit BitsAndBytes quantization on CUDA.
-    3. Modifies top-p parameter for training generation / sampling.
-    4. Evaluates baseline model before fine-tuning.
-    5. Configures LoRA adapter (r=16, alpha=32) and SFTTrainer on paired Steam descriptions and vibe scores.
-    6. Executes fine-tuning loop on GPU.
-    7. Saves trained LoRA adapter to output_dir.
-    8. Evaluates fine-tuned model after training and records before/after improvement comparison.
+    3. Enables hardware accelerated mixed precision (bf16/fp16).
+    4. Evaluates baseline model with batched generation and torch.compile().
+    5. Formats training dataset using parallel vectorized .map(batched=True).
+    6. Configures LoRA adapter (r=16, alpha=32) and SFTTrainer with bf16/fp16.
+    7. Executes fine-tuning loop on GPU.
+    8. Saves trained LoRA adapter to output_dir.
+    9. Evaluates fine-tuned model after training and records before/after improvement comparison.
     """
     hf_token = os.getenv("HF_TOKEN") or None
     device = "cuda" if torch.cuda.is_available() else "cpu"
     resolved_output = resolve_output_dir(output_dir)
     os.makedirs(resolved_output, exist_ok=True)
 
+    # Mixed precision auto-detection & configuration
+    use_bf16 = False
+    use_fp16 = False
+    if torch.cuda.is_available():
+        if bf16 is True or (bf16 is None and torch.cuda.is_bf16_supported()):
+            use_bf16 = True
+            use_fp16 = False
+            precision_desc = "bf16=True (Hardware bfloat16 accelerated)"
+        elif fp16 is True or (fp16 is None and not torch.cuda.is_bf16_supported()):
+            use_fp16 = True
+            use_bf16 = False
+            precision_desc = "fp16=True (Hardware float16 accelerated)"
+        else:
+            precision_desc = "fp32 (Standard precision)"
+    else:
+        precision_desc = "CPU (fp32)"
+
     print("==================================================================")
     print("      STEAM HIT PREDICTOR - PHASE 3: 8-BIT QLORA FINE-TUNING      ")
     print("==================================================================")
     print(f"Base Model:             {model_id}")
     print(f"Quantization:           BitsAndBytes 8-bit (load_in_8bit=True)")
+    print(f"Mixed Precision:        {precision_desc}")
     print(f"Sampling Parameters:    top_p={top_p}, temperature={temperature}")
     print(f"LoRA Configuration:     rank={lora_r}, alpha={lora_alpha}, dropout={lora_dropout}")
     print(f"Training Dataset:       {max_train_samples} samples from cleaned_data/train/")
-    print(f"Evaluation Dataset:     {max_eval_samples} samples from cleaned_data/test/")
+    print(f"Evaluation Dataset:     {max_eval_samples} samples (Batched x{eval_batch_size}) from cleaned_data/test/")
     print(f"Target Output Adapter:  {resolved_output}")
     print("==================================================================\n")
 
@@ -392,11 +511,12 @@ def run_qlora_training(
         llm_int8_has_fp16_weight=False
     )
 
-    print(f"Loading base model '{model_id}' in 8-bit quantization on {device}...")
+    model_dtype = torch.bfloat16 if use_bf16 else torch.float16
+    print(f"Loading base model '{model_id}' in 8-bit quantization with {model_dtype} on {device}...")
     base_model = AutoModelForCausalLM.from_pretrained(
         model_id,
         quantization_config=bnb_config,
-        torch_dtype=torch.float16,
+        dtype=model_dtype,
         device_map="auto" if device == "cuda" else None,
         token=hf_token
     )
@@ -408,7 +528,7 @@ def run_qlora_training(
         base_model.generation_config.do_sample = True
         print(f"Configured generation config: top_p={top_p}, temperature={temperature}, do_sample=True")
 
-    # 4. Before Evaluation (Base Model)
+    # 4. Before Evaluation (Base Model with Batched Evaluation & torch.compile)
     before_metrics = evaluate_model_on_dataset(
         model=base_model,
         tokenizer=tokenizer,
@@ -416,6 +536,8 @@ def run_qlora_training(
         device=device,
         top_p=top_p,
         temperature=temperature,
+        eval_batch_size=eval_batch_size,
+        use_compile=use_compile,
         label="Before Fine-Tuning (Base Model)"
     )
 
@@ -437,11 +559,10 @@ def run_qlora_training(
     print("Trainable LoRA Parameter Summary:")
     peft_model.print_trainable_parameters()
 
-    # 6. Build Hugging Face Training Dataset
-    print(f"Formatting {len(df_train)} training instruction pairs...")
-    train_hf_ds = prepare_hf_training_dataset(df_train, tokenizer)
+    # 6. Build Hugging Face Training Dataset via Vectorized Batched .map()
+    train_hf_ds = prepare_hf_training_dataset(df_train, tokenizer, num_proc=num_proc)
 
-    # 7. SFTConfig & SFTTrainer
+    # 7. SFTConfig & SFTTrainer with Hardware-Accelerated Mixed Precision
     tmp_ckpt_dir = os.path.join(resolved_output, "_checkpoints")
     os.makedirs(tmp_ckpt_dir, exist_ok=True)
 
@@ -453,8 +574,8 @@ def run_qlora_training(
         learning_rate=learning_rate,
         logging_steps=10,
         save_strategy="no",
-        fp16=False,
-        bf16=False,
+        fp16=use_fp16,
+        bf16=use_bf16,
         max_length=512,
         dataset_text_field="text",
         report_to="none",
@@ -468,7 +589,7 @@ def run_qlora_training(
         processing_class=tokenizer,
     )
 
-    print("\nStarting QLoRA 8-bit fine-tuning loop on GPU...")
+    print(f"\nStarting QLoRA 8-bit fine-tuning loop on GPU (bf16={use_bf16}, fp16={use_fp16})...")
     train_start_t = time.time()
     train_result = trainer.train()
     training_duration = time.time() - train_start_t
@@ -485,7 +606,7 @@ def run_qlora_training(
     trainer.model.save_pretrained(root_adapter_dir)
     print(f"Saved primary adapter artifacts to: '{root_adapter_dir}' and '{resolved_output}'")
 
-    # 9. After Evaluation (Fine-Tuned Model)
+    # 9. After Evaluation (Fine-Tuned Model with Batched Evaluation & torch.compile)
     after_metrics = evaluate_model_on_dataset(
         model=trainer.model,
         tokenizer=tokenizer,
@@ -493,6 +614,8 @@ def run_qlora_training(
         device=device,
         top_p=top_p,
         temperature=temperature,
+        eval_batch_size=eval_batch_size,
+        use_compile=use_compile,
         label="After Fine-Tuning (QLoRA 8-Bit Adapter)"
     )
 
@@ -515,8 +638,13 @@ def run_qlora_training(
     summary = {
         "model_id": model_id,
         "quantization": "8-bit (BitsAndBytesConfig load_in_8bit=True)",
+        "precision": precision_desc,
+        "bf16": use_bf16,
+        "fp16": use_fp16,
         "top_p": top_p,
         "temperature": temperature,
+        "eval_batch_size": eval_batch_size,
+        "use_compile": use_compile,
         "lora_rank": lora_r,
         "lora_alpha": lora_alpha,
         "training_samples": len(df_train),
@@ -545,13 +673,16 @@ def run_qlora_training(
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Steam Hit Predictor - Phase 3: 8-bit QLoRA Fine-Tuning")
+    parser = argparse.ArgumentParser(description="Steam Hit Predictor - Phase 3: Optimized 8-bit QLoRA Fine-Tuning")
     parser.add_argument("--model-id", type=str, default="Qwen/Qwen3.5-0.8B", help="Base model identifier")
     parser.add_argument("--data-dir", type=str, default="cleaned_data", help="Cleaned dataset directory")
     parser.add_argument("--output-dir", type=str, default="saved_models/llm_adapters/qwen_steam_vibe_8bit", help="Adapter output directory")
-    parser.add_argument("--max-train-samples", type=int, default=1000, help="Number of training samples to use")
-    parser.add_argument("--max-eval-samples", type=int, default=10, help="Number of holdout test samples for evaluation")
-    parser.add_argument("--epochs", type=int, default=5, help="Training epochs")
+    parser.add_argument("--max-train-samples", type=int, default=300, help="Number of training samples to use")
+    parser.add_argument("--max-eval-samples", type=int, default=20, help="Number of holdout test samples for evaluation (default: 20)")
+    parser.add_argument("--eval-batch-size", type=int, default=4, help="Batch size for model evaluation generation (default: 4)")
+    parser.add_argument("--use-compile", action="store_true", default=True, help="Enable torch.compile() for evaluation acceleration")
+    parser.add_argument("--no-compile", dest="use_compile", action="store_false", help="Disable torch.compile()")
+    parser.add_argument("--epochs", type=int, default=1, help="Training epochs")
     parser.add_argument("--batch-size", type=int, default=2, help="Per-device train batch size")
     parser.add_argument("--grad-accum", type=int, default=4, help="Gradient accumulation steps")
     parser.add_argument("--lr", type=float, default=2e-4, help="Learning rate")
@@ -560,6 +691,9 @@ def main():
     parser.add_argument("--lora-dropout", type=float, default=0.05, help="LoRA dropout")
     parser.add_argument("--top-p", type=float, default=0.9, help="Top-p sampling parameter for generation/evaluation")
     parser.add_argument("--temperature", type=float, default=0.7, help="Sampling temperature")
+    parser.add_argument("--bf16", action="store_true", default=None, help="Force bfloat16 mixed precision")
+    parser.add_argument("--fp16", action="store_true", default=None, help="Force float16 mixed precision")
+    parser.add_argument("--num-proc", type=int, default=None, help="CPU workers for dataset .map()")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
 
     args = parser.parse_args()
@@ -570,6 +704,8 @@ def main():
         output_dir=args.output_dir,
         max_train_samples=args.max_train_samples,
         max_eval_samples=args.max_eval_samples,
+        eval_batch_size=args.eval_batch_size,
+        use_compile=args.use_compile,
         epochs=args.epochs,
         batch_size=args.batch_size,
         grad_accum=args.grad_accum,
@@ -579,10 +715,12 @@ def main():
         lora_dropout=args.lora_dropout,
         top_p=args.top_p,
         temperature=args.temperature,
+        bf16=args.bf16,
+        fp16=args.fp16,
+        num_proc=args.num_proc,
         seed=args.seed
     )
 
 
 if __name__ == "__main__":
     main()
-
