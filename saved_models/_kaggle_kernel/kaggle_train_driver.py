@@ -3,11 +3,9 @@ import sys
 import subprocess
 
 print("==================================================================")
-print("     KAGGLE GPU DRIVER: STEAM VIBE 8-BIT QLORA FINE-TUNING       ")
+print("     KAGGLE GPU: STEAM VIBE 8-BIT QLORA TRAINING (5 EPOCHS)       ")
 print("==================================================================")
 
-# Install required packages
-print("Installing training dependencies in Kaggle environment...")
 subprocess.check_call([
     sys.executable, "-m", "pip", "install", "-q",
     "transformers>=4.40.0", "peft>=0.10.0", "trl>=0.8.0",
@@ -16,20 +14,14 @@ subprocess.check_call([
 
 import qlora_training
 
-print("\nStarting 8-bit QLoRA training loop on Kaggle GPU...")
 qlora_training.run_qlora_training(
-    model_id="Qwen/Qwen3.5-0.8B",
     data_dir="/kaggle/input",
     output_dir="/kaggle/working/qwen_steam_vibe_8bit",
-    max_train_samples=300,
+    max_train_samples=None,
     max_eval_samples=20,
-    epochs=1,
+    epochs=5,
     batch_size=2,
-    grad_accum=4,
-    learning_rate=0.0002,
-    top_p=0.9,
-    temperature=0.7,
     fp16=True,
     use_compile=False
 )
-print("\nKaggle GPU fine-tuning completed successfully! Outputs written to /kaggle/working/.")
+print("Kaggle GPU training finished! Output saved to /kaggle/working/.")

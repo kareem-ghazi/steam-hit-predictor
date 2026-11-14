@@ -67,17 +67,20 @@
   - **Adapted `llm-pipeline` to Three-Split `cleaned_data/` Dataset Architecture:**
     - Seamlessly loads and merges game attributes and descriptions directly from `cleaned_data/` (`train/`, `valid/`, `test/` pairing `games.csv` with `games_descriptions.csv` on `appid`).
   - Created root [requirements.txt](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/requirements.txt) and root [Dockerfile](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/Dockerfile).
-- **Phase 3: Optimized 8-Bit QLoRA Fine-Tuning, Kaggle Remote/Native GPU Training & Main Build ([llm-pipeline/qlora_training.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/llm-pipeline/qlora_training.py)):**
-  - **Full Training on Kaggle GPU Infrastructure:**
-    - **Remote Execution Dispatcher (`--train-on-kaggle`):** Submits and manages the complete GPU training job on Kaggle via Kaggle API / `kagglehub`, uploads/mounts `cleaned_data/`, launches a GPU kernel (`enable_gpu: true`), monitors execution status, and downloads trained adapter artifacts directly to `saved_models/llm_adapters/qwen_steam_vibe_8bit/`. Supports background execution with `--detach` and artifact retrieval via `--pull-kaggle-output`.
-    - **Native Kaggle Environment Detection (`is_running_on_kaggle`):** When executed directly inside a Kaggle notebook or kernel, automatically detects the environment, discovers datasets in `/kaggle/input/`, maps model output to `/kaggle/working/`, and configures hardware-appropriate `fp16=True` mixed precision for Tesla T4 / P100 GPUs.
-    - **Standalone Ready-to-Run Kaggle Notebook ([llm-pipeline/steam_vibe_qlora_kaggle.ipynb](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/llm-pipeline/steam_vibe_qlora_kaggle.ipynb)):** Created a clean, 1-click executable Jupyter notebook for running 8-bit QLoRA fine-tuning directly in the Kaggle web UI with GPU T4 x2.
-  - **Kaggle Account & Hub Integration (Modern API Tokens + Legacy):**
-    - Configured dedicated placeholder for modern recommended Kaggle API token (`KAGGLE_API_TOKEN`) in [.env](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/.env) alongside optional legacy credentials (`KAGGLE_USERNAME`, `KAGGLE_KEY`).
-    - Integrated `setup_kaggle_environment()` supporting modern API tokens (`kagglehub >= 0.4.1` / `kaggle CLI >= 1.8.0`), saving `~/.kaggle/access_token`, configuring `kagglehub.config.set_kaggle_api_token()`, and fetching user identity via `kagglehub.whoami()`.
-    - Maintained full backwards compatibility with legacy `~/.kaggle/kaggle.json` authentication.
-    - Added support for loading base models directly from Kaggle Hub via `kaggle://<owner>/<model>/<framework>/<variation>`.
-    - Implemented `upload_adapter_to_kaggle()` with `--push-to-kaggle` and `--kaggle-model-handle` CLI options, enabling pushing fine-tuned 8-bit QLoRA adapters to Kaggle Models via `kagglehub.model_upload()`.
+- **Phase 3: Optimized 8-Bit QLoRA Fine-Tuning, Default Kaggle GPU Training & Main Build ([llm-pipeline/qlora_training.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/llm-pipeline/qlora_training.py)):**
+  - **Kaggle GPU Training by Default:**
+    - **Default Execution Mode:** Running `python llm-pipeline/qlora_training.py` now defaults directly to remote Kaggle GPU training. It authenticates with `KAGGLE_API_TOKEN`, verifies/uploads `cleaned_data/`, pushes the kernel to Kaggle, monitors execution, and downloads the fine-tuned adapter weights to `saved_models/llm_adapters/qwen_steam_vibe_8bit/`.
+    - **Full Dataset Training by Default:** Set `max_train_samples = None` by default, training across the entire 22,248 games in `cleaned_data/train/`.
+    - **Default Epochs:** Set to `epochs = 5` by default for deep convergence.
+    - **Streamlined Command-Line Interface:** Removed all unnecessary command-line arguments and extraneous options, reducing the CLI to 5 clean, intuitive controls:
+      - `--epochs` (default: 5)
+      - `--batch-size` (default: 2)
+      - `--local` (forces training on local PC instead of Kaggle)
+      - `--detach` (submits Kaggle job and exits immediately without polling)
+      - `--pull` (downloads output from completed Kaggle kernel)
+    - **Removed Legacy Checking & Extraneous Code:** Completely stripped legacy `KAGGLE_USERNAME`/`KAGGLE_KEY` checking, legacy `kaggle.json` writing, and unused imports/helpers. Authentication relies solely on the modern Kaggle API token workflow.
+    - **Native Kaggle Detection (`is_running_on_kaggle`):** Auto-detects Kaggle environment when running inside a Kaggle notebook or batch job, dynamically mapping `/kaggle/input/` and `/kaggle/working/qwen_steam_vibe_8bit` with `fp16=True`.
+    - **Interactive Kaggle Notebook ([llm-pipeline/steam_vibe_qlora_kaggle.ipynb](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/llm-pipeline/steam_vibe_qlora_kaggle.ipynb)):** Pre-configured, 1-click ready-to-run Jupyter notebook for Kaggle Web UI with GPU T4 x2.
   - **BitsAndBytes 8-Bit Quantization:** Loaded base model `Qwen/Qwen3.5-0.8B` in 8-bit mode (`BitsAndBytesConfig(load_in_8bit=True)`), verified running on NVIDIA GeForce RTX 4060 Laptop GPU.
   - **Hardware-Accelerated Mixed Precision:** Enabled `bf16=True` in `SFTConfig` and model loading, utilizing RTX 4060's native bfloat16 tensor cores for accelerated training and lower memory overhead.
   - **Vectorized Dataset Pre-formatting:** Replaced sequential row-by-row iteration with Hugging Face `Dataset.map(batched=True, num_proc=4)`, eliminating CPU bottleneck and parallelizing prompt construction.
