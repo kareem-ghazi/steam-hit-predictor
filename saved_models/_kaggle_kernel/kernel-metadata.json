@@ -1,0 +1,17 @@
+{
+  "id": "kareemghazi/steam-vibe-qlora-training",
+  "title": "Steam Vibe QLoRA Training",
+  "code_file": "kaggle_train_driver.py",
+  "language": "python",
+  "kernel_type": "script",
+  "is_private": "true",
+  "enable_gpu": "true",
+  "enable_tpu": "false",
+  "enable_internet": "true",
+  "dataset_sources": [
+    "kareemghazi/steam-hit-predictor-cleaned-data"
+  ],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}

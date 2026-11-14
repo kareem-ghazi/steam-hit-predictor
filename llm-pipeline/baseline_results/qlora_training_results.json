@@ -4,6 +4,11 @@
   "precision": "bf16=True (Hardware bfloat16 accelerated)",
   "bf16": true,
   "fp16": false,
+  "kaggle": {
+    "authenticated": true,
+    "username": "kareemghazi",
+    "pushed": false
+  },
   "top_p": 0.9,
   "temperature": 0.7,
   "eval_batch_size": 4,
@@ -13,17 +18,17 @@
   "training_samples": 300,
   "evaluation_samples": 20,
   "training_epochs": 1,
-  "final_train_loss": 1.2015,
-  "training_duration_sec": 324.82,
-  "adapter_save_path": "C:\\Users\\kareemghazi\\Desktop\\steam-hit-predictor\\saved_models\\llm_adapters\\qwen_steam_vibe_8bit",
+  "final_train_loss": 1.2077,
+  "training_duration_sec": 344.8,
+  "adapter_save_path": "c:\\Users\\kareemghazi\\Desktop\\steam-hit-predictor\\saved_models\\llm_adapters\\qwen_steam_vibe_8bit",
   "before_finetuning": {
     "label": "Before Fine-Tuning (Base Model)",
     "total_samples": 20,
     "valid_json_count": 20,
     "validity_rate_pct": 100.0,
-    "mae": 1.98,
-    "accuracy_within_tolerance_pct": 58.33,
-    "avg_latency_sec": 4.154,
+    "mae": 1.73,
+    "accuracy_within_tolerance_pct": 68.33,
+    "avg_latency_sec": 4.716,
     "eval_batch_size": 4,
     "top_p": 0.9,
     "temperature": 0.7
@@ -33,16 +38,16 @@
     "total_samples": 20,
     "valid_json_count": 20,
     "validity_rate_pct": 100.0,
-    "mae": 1.44,
-    "accuracy_within_tolerance_pct": 73.33,
-    "avg_latency_sec": 4.201,
+    "mae": 1.4,
+    "accuracy_within_tolerance_pct": 76.67,
+    "avg_latency_sec": 4.684,
     "eval_batch_size": 4,
     "top_p": 0.9,
     "temperature": 0.7
   },
   "improvement": {
-    "mae_reduction": 0.54,
-    "accuracy_gain_pct": 15.0,
+    "mae_reduction": 0.33,
+    "accuracy_gain_pct": 8.34,
     "validity_gain_pct": 0.0
   }
 }

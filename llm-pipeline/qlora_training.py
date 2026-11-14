@@ -28,19 +28,148 @@ from trl import SFTTrainer, SFTConfig
 from datasets import Dataset
 from tqdm import tqdm
 
-load_dotenv()
-logging.getLogger("transformers").setLevel(logging.ERROR)
-logging.getLogger("bitsandbytes").setLevel(logging.ERROR)
-
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PARENT_DIR = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
 for p in [CURRENT_DIR, PARENT_DIR]:
     if p not in sys.path:
         sys.path.insert(0, p)
 
+# Load environment variables (.env) from root or current directory
+for p in [os.path.join(PARENT_DIR, ".env"), os.path.join(CURRENT_DIR, ".env"), ".env"]:
+    if os.path.exists(p):
+        load_dotenv(p)
+
+logging.getLogger("transformers").setLevel(logging.ERROR)
+logging.getLogger("bitsandbytes").setLevel(logging.ERROR)
+
+
+def setup_kaggle_environment() -> Tuple[bool, Optional[str]]:
+    """
+    Sets up Kaggle authentication using credentials from environment (.env).
+    Supports:
+    1. Modern API Token (KAGGLE_API_TOKEN) for kagglehub (>= 0.4.1) and kaggle CLI (>= 1.8.0).
+    2. Legacy credentials (KAGGLE_USERNAME and KAGGLE_KEY) for backwards compatibility.
+    
+    Returns (is_authenticated, username).
+    """
+    # 1. Check newer recommended API token
+    api_token = os.getenv("KAGGLE_API_TOKEN", "").strip()
+    is_token_valid = bool(api_token and api_token != "your_kaggle_api_token")
+
+    # 2. Check legacy username + key credentials
+    username = os.getenv("KAGGLE_USERNAME", "").strip()
+    key = os.getenv("KAGGLE_KEY", "").strip()
+    is_legacy_valid = bool(
+        username
+        and key
+        and username != "your_kaggle_username"
+        and key != "your_kaggle_api_key"
+    )
+
+    if not is_token_valid and not is_legacy_valid:
+        return False, None
+
+    kaggle_dir = os.path.expanduser("~/.kaggle")
+    os.makedirs(kaggle_dir, exist_ok=True)
+
+    # Preferred: Modern API Token workflow
+    if is_token_valid:
+        os.environ["KAGGLE_API_TOKEN"] = api_token
+        # Save token to ~/.kaggle/access_token so both kagglehub and kaggle CLI recognize it
+        try:
+            token_file = os.path.join(kaggle_dir, "access_token")
+            with open(token_file, "w", encoding="utf-8") as f:
+                f.write(api_token)
+        except Exception as e:
+            print(f"Note: Could not write ~/.kaggle/access_token: {e}")
+
+        try:
+            import kagglehub
+            from kagglehub.config import set_kaggle_api_token
+            set_kaggle_api_token(api_token)
+
+            # Query authenticated username via whoami()
+            auth_username = None
+            try:
+                user_info = kagglehub.whoami(verbose=False)
+                auth_username = user_info.get("username")
+            except Exception:
+                auth_username = username if is_legacy_valid else None
+
+            user_str = f" for user: '{auth_username}'" if auth_username else ""
+            print(f"Kaggle API successfully authenticated via API Token{user_str} (modern token auth).")
+            return True, auth_username
+        except Exception as e:
+            print(f"Kaggle API token authentication notice: {e}")
+            return True, username if is_legacy_valid else None
+
+    # Fallback: Legacy credentials workflow
+    if is_legacy_valid:
+        os.environ["KAGGLE_USERNAME"] = username
+        os.environ["KAGGLE_KEY"] = key
+        try:
+            kaggle_json_path = os.path.join(kaggle_dir, "kaggle.json")
+            with open(kaggle_json_path, "w", encoding="utf-8") as f:
+                json.dump({"username": username, "key": key}, f, indent=2)
+        except Exception as e:
+            print(f"Note: Could not write ~/.kaggle/kaggle.json: {e}")
+
+        try:
+            import kagglehub
+            kagglehub.login()
+            print(f"Kaggle API successfully authenticated for user: '{username}' (legacy credentials).")
+            return True, username
+        except Exception as e:
+            print(f"Kaggle legacy authentication notice: {e}")
+            return False, username
+
+    return False, None
+
+
+def upload_adapter_to_kaggle(
+    local_model_dir: str,
+    handle: str,
+    version_notes: str = "Trained 8-bit QLoRA Steam Vibe Predictor adapter"
+) -> bool:
+    """Uploads the trained LoRA adapter to Kaggle Models / Kaggle Hub."""
+    try:
+        import kagglehub
+        print(f"\nUploading fine-tuned adapter to Kaggle Hub model: '{handle}'...")
+        kagglehub.model_upload(
+            handle=handle,
+            local_model_dir=local_model_dir,
+            version_notes=version_notes
+        )
+        print(f"Successfully uploaded adapter to Kaggle: https://www.kaggle.com/models/{handle}")
+        return True
+    except Exception as e:
+        print(f"Kaggle adapter upload failed: {e}")
+        return False
+
+
+def is_running_on_kaggle() -> bool:
+    """Returns True if the script is running inside a Kaggle notebook or batch kernel environment."""
+    return (
+        os.path.exists("/kaggle/working")
+        or "KAGGLE_KERNEL_RUN_TYPE" in os.environ
+        or "KAGGLE_URL_BASE" in os.environ
+    )
+
 
 def resolve_data_dir(data_dir: str = "cleaned_data") -> str:
-    """Resolves data directory path whether executed from root or llm-pipeline/."""
+    """Resolves data directory path whether executed locally or inside a Kaggle kernel."""
+    if is_running_on_kaggle():
+        # Search Kaggle input mounts: /kaggle/input
+        kaggle_input = "/kaggle/input"
+        if os.path.exists(kaggle_input):
+            for root, dirs, files in os.walk(kaggle_input):
+                if "games.csv" in files and os.path.basename(root) in ["train", "valid", "test"]:
+                    parent = os.path.dirname(root)
+                    print(f"Detected Kaggle input dataset root at: '{parent}'")
+                    return parent
+                if os.path.basename(root) == "cleaned_data" and any(d in dirs for d in ["train", "test"]):
+                    return root
+
     candidates = [
         data_dir,
         os.path.join(PARENT_DIR, data_dir),
@@ -50,10 +179,275 @@ def resolve_data_dir(data_dir: str = "cleaned_data") -> str:
 
 
 def resolve_output_dir(output_dir: str) -> str:
-    """Resolves output directory path relative to project structure."""
+    """Resolves output directory path relative to project structure or Kaggle working directory."""
+    if is_running_on_kaggle():
+        if not output_dir.startswith("/kaggle/working"):
+            basename = os.path.basename(output_dir.rstrip("/\\"))
+            return os.path.join("/kaggle/working", basename)
+        return output_dir
     if os.path.isabs(output_dir):
         return output_dir
     return os.path.abspath(os.path.join(PARENT_DIR, output_dir))
+
+
+def launch_training_on_kaggle(
+    data_dir: str = "cleaned_data",
+    output_dir: str = "saved_models/llm_adapters/qwen_steam_vibe_8bit",
+    dataset_slug: str = "steam-hit-predictor-cleaned-data",
+    kernel_slug: str = "steam-vibe-qlora-training",
+    model_id: str = "Qwen/Qwen3.5-0.8B",
+    max_train_samples: int = 300,
+    max_eval_samples: int = 20,
+    epochs: int = 1,
+    batch_size: int = 2,
+    grad_accum: int = 4,
+    learning_rate: float = 2e-4,
+    top_p: float = 0.9,
+    temperature: float = 0.7,
+    detach: bool = False,
+    skip_dataset_upload: bool = False,
+    poll_interval: int = 20
+) -> bool:
+    """
+    Submits and manages a full GPU-accelerated QLoRA training job remotely on Kaggle:
+    1. Authenticates using KAGGLE_API_TOKEN from .env.
+    2. Uploads or checks the cleaned dataset on Kaggle Datasets (<username>/<dataset_slug>).
+    3. Bundles code and prepares kernel metadata enabling GPU and internet.
+    4. Pushes the training code to Kaggle Kernels (<username>/<kernel_slug>).
+    5. Monitors execution status until completion.
+    6. Automatically downloads trained LoRA adapter weights directly into local output_dir.
+    """
+    is_auth, username = setup_kaggle_environment()
+    if not is_auth or not username:
+        print("\n" + "=" * 70)
+        print(" [!] Kaggle Authentication Required for Remote Training")
+        print("=" * 70)
+        print("To run training on Kaggle's free GPU cloud:")
+        print("1. Go to https://www.kaggle.com/settings/api")
+        print("2. Under 'API Tokens', click 'Generate New Token'")
+        print("3. Copy the token and paste it into your .env file as:")
+        print("   KAGGLE_API_TOKEN=<your_copied_token>")
+        print("=" * 70 + "\n")
+        return False
+
+    try:
+        from kaggle.api.kaggle_api_extended import KaggleApi
+        api = KaggleApi()
+        api.authenticate()
+    except Exception as e:
+        print(f"Error authenticating with Kaggle API: {e}")
+        return False
+
+    resolved_data = resolve_data_dir(data_dir)
+    resolved_output = resolve_output_dir(output_dir)
+    dataset_ref = f"{username}/{dataset_slug}"
+    kernel_ref = f"{username}/{kernel_slug}"
+
+    print("==================================================================")
+    print("      LAUNCHING STEAM VIBE QLORA TRAINING ON KAGGLE GPU          ")
+    print("==================================================================")
+    print(f"Kaggle User:           {username}")
+    print(f"Kaggle Dataset:        {dataset_ref}")
+    print(f"Kaggle Kernel:         {kernel_ref}")
+    print(f"Local Data Directory:  {resolved_data}")
+    print(f"Target Adapter Output: {resolved_output}")
+    print(f"Training Config:       {max_train_samples} samples, {epochs} epochs, top_p={top_p}")
+    print("==================================================================\n")
+
+    # Step 1: Ensure Dataset exists on Kaggle
+    if not skip_dataset_upload:
+        print(f"Checking if dataset '{dataset_ref}' exists on Kaggle...")
+        dataset_exists = False
+        try:
+            status = str(api.dataset_status(dataset_ref))
+            print(f"Dataset '{dataset_ref}' is present on Kaggle (status: {status}).")
+            dataset_exists = True
+        except Exception:
+            dataset_exists = False
+
+        if not dataset_exists:
+            print(f"Uploading '{resolved_data}' to Kaggle Datasets as '{dataset_ref}'...")
+            try:
+                import kagglehub
+                kagglehub.dataset_upload(
+                    handle=dataset_ref,
+                    local_dataset_dir=resolved_data,
+                    version_notes="Cleaned Steam dataset splits (train, valid, test) for QLoRA training"
+                )
+                print(f"Dataset upload complete: https://www.kaggle.com/datasets/{dataset_ref}")
+            except Exception as e:
+                print(f"Note on dataset upload via kagglehub: {e}")
+                print("If the dataset already exists or was created manually, the kernel will attempt mounting.")
+
+    # Step 2: Prepare Kaggle Kernel Staging Directory
+    staging_dir = os.path.join(PARENT_DIR, "saved_models", "_kaggle_kernel")
+    os.makedirs(staging_dir, exist_ok=True)
+
+    # Copy current qlora_training.py into staging
+    current_script_path = os.path.abspath(__file__)
+    staged_script_path = os.path.join(staging_dir, "qlora_training.py")
+    import shutil
+    shutil.copy2(current_script_path, staged_script_path)
+
+    # Create driver script that installs dependencies and runs training on Kaggle GPU
+    driver_script_path = os.path.join(staging_dir, "kaggle_train_driver.py")
+    driver_code = f'''import os
+import sys
+import subprocess
+
+print("==================================================================")
+print("     KAGGLE GPU DRIVER: STEAM VIBE 8-BIT QLORA FINE-TUNING       ")
+print("==================================================================")
+
+# Install required packages
+print("Installing training dependencies in Kaggle environment...")
+subprocess.check_call([
+    sys.executable, "-m", "pip", "install", "-q",
+    "transformers>=4.40.0", "peft>=0.10.0", "trl>=0.8.0",
+    "bitsandbytes>=0.43.0", "accelerate>=0.28.0", "datasets>=2.18.0", "tqdm"
+])
+
+import qlora_training
+
+print("\\nStarting 8-bit QLoRA training loop on Kaggle GPU...")
+qlora_training.run_qlora_training(
+    model_id="{model_id}",
+    data_dir="/kaggle/input",
+    output_dir="/kaggle/working/qwen_steam_vibe_8bit",
+    max_train_samples={max_train_samples},
+    max_eval_samples={max_eval_samples},
+    epochs={epochs},
+    batch_size={batch_size},
+    grad_accum={grad_accum},
+    learning_rate={learning_rate},
+    top_p={top_p},
+    temperature={temperature},
+    fp16=True,
+    use_compile=False
+)
+print("\\nKaggle GPU fine-tuning completed successfully! Outputs written to /kaggle/working/.")
+'''
+    with open(driver_script_path, "w", encoding="utf-8") as f:
+        f.write(driver_code)
+
+    # Create kernel-metadata.json
+    metadata = {
+        "id": kernel_ref,
+        "title": "Steam Vibe QLoRA Training",
+        "code_file": "kaggle_train_driver.py",
+        "language": "python",
+        "kernel_type": "script",
+        "is_private": "true",
+        "enable_gpu": "true",
+        "enable_tpu": "false",
+        "enable_internet": "true",
+        "dataset_sources": [dataset_ref],
+        "competition_sources": [],
+        "kernel_sources": [],
+        "model_sources": []
+    }
+    metadata_path = os.path.join(staging_dir, "kernel-metadata.json")
+    with open(metadata_path, "w", encoding="utf-8") as f:
+        json.dump(metadata, f, indent=2)
+
+    # Step 3: Push Kernel to Kaggle
+    print(f"Pushing GPU kernel package to Kaggle: '{kernel_ref}'...")
+    try:
+        api.kernels_push(staging_dir)
+        print(f"Kernel successfully submitted to Kaggle!")
+        print(f"Track execution online at: https://www.kaggle.com/code/{kernel_ref}\n")
+    except Exception as e:
+        print(f"Error pushing kernel to Kaggle: {e}")
+        return False
+
+    if detach:
+        print("Detach mode active: Kernel is running remotely on Kaggle in the background.")
+        print(f"When finished, download the trained adapter by running:")
+        print(f"  python llm-pipeline/qlora_training.py --pull-kaggle-output --kernel-slug {kernel_slug}")
+        return True
+
+    # Step 4: Monitor Kernel Execution Status
+    print(f"Monitoring Kaggle GPU execution (polling every {poll_interval}s)...")
+    last_status = None
+    start_poll_t = time.time()
+    while True:
+        time.sleep(poll_interval)
+        try:
+            status_obj = api.kernels_status(kernel_ref)
+            status_str = str(getattr(status_obj, "status", status_obj)).lower()
+            msg = getattr(status_obj, "failure_message", None)
+            elapsed = time.time() - start_poll_t
+
+            if status_str != last_status:
+                print(f"  [{elapsed:6.1f}s] Kernel status: '{status_str}'")
+                last_status = status_str
+
+            if status_str == "complete":
+                print(f"\nKaggle GPU training completed successfully in {elapsed:.1f}s!")
+                break
+            elif status_str in ["error", "failed", "cancelacknowledged"]:
+                print(f"\n[!] Kaggle kernel failed with status: '{status_str}'.")
+                if msg:
+                    print(f"Failure message: {msg}")
+                return False
+        except Exception as e:
+            print(f"Notice during status check: {e}")
+
+    # Step 5: Pull Trained Adapter Artifacts from Kaggle Output
+    return pull_kaggle_kernel_output(kernel_ref=kernel_ref, output_dir=resolved_output)
+
+
+def pull_kaggle_kernel_output(
+    kernel_ref: Optional[str] = None,
+    kernel_slug: str = "steam-vibe-qlora-training",
+    output_dir: str = "saved_models/llm_adapters/qwen_steam_vibe_8bit"
+) -> bool:
+    """Downloads the trained LoRA adapter outputs from a completed Kaggle kernel."""
+    is_auth, username = setup_kaggle_environment()
+    if not is_auth or not username:
+        print("Kaggle authentication required. Please set KAGGLE_API_TOKEN in .env.")
+        return False
+
+    if not kernel_ref:
+        kernel_ref = f"{username}/{kernel_slug}"
+
+    try:
+        from kaggle.api.kaggle_api_extended import KaggleApi
+        api = KaggleApi()
+        api.authenticate()
+    except Exception as e:
+        print(f"Error authenticating with Kaggle API: {e}")
+        return False
+
+    resolved_output = resolve_output_dir(output_dir)
+    os.makedirs(resolved_output, exist_ok=True)
+    print(f"\nDownloading outputs from Kaggle kernel '{kernel_ref}' into '{resolved_output}'...")
+
+    try:
+        outfiles, _ = api.kernels_output(kernel_ref, path=resolved_output, force=True, quiet=False)
+        print(f"Downloaded {len(outfiles)} file(s) from Kaggle.")
+
+        # Ensure root adapter directory has copies of config and weights
+        root_adapter_dir = os.path.dirname(resolved_output)
+        import shutil
+        for fname in ["adapter_config.json", "adapter_model.safetensors"]:
+            candidates = [
+                os.path.join(resolved_output, fname),
+                os.path.join(resolved_output, "qwen_steam_vibe_8bit", fname),
+            ]
+            for c in candidates:
+                if os.path.exists(c):
+                    target = os.path.join(root_adapter_dir, fname)
+                    if not os.path.exists(target) or os.path.getmtime(c) > os.path.getmtime(target):
+                        shutil.copy2(c, target)
+                        print(f"Copied primary adapter artifact: {fname} -> {target}")
+
+        print(f"\nSuccessfully synchronized fine-tuned LoRA adapter from Kaggle!")
+        print(f"Local adapter location: '{resolved_output}'")
+        return True
+    except Exception as e:
+        print(f"Failed to download outputs from Kaggle kernel: {e}")
+        return False
 
 
 def load_cleaned_data_split(
@@ -445,24 +839,40 @@ def run_qlora_training(
     bf16: Optional[bool] = None,
     fp16: Optional[bool] = None,
     num_proc: Optional[int] = None,
+    push_to_kaggle: bool = False,
+    kaggle_model_handle: Optional[str] = None,
     seed: int = 42
 ) -> Dict[str, Any]:
     """
     Executes the optimized Phase 3 LLM Fine-Tuning pipeline:
     1. Loads cleaned training & holdout evaluation splits from cleaned_data/.
-    2. Initializes Qwen3.5-0.8B with 8-bit BitsAndBytes quantization on CUDA.
+    2. Initializes base LLM (from HuggingFace or Kaggle Hub) with 8-bit BitsAndBytes quantization on CUDA.
     3. Enables hardware accelerated mixed precision (bf16/fp16).
     4. Evaluates baseline model with batched generation and torch.compile().
     5. Formats training dataset using parallel vectorized .map(batched=True).
     6. Configures LoRA adapter (r=16, alpha=32) and SFTTrainer with bf16/fp16.
     7. Executes fine-tuning loop on GPU.
     8. Saves trained LoRA adapter to output_dir.
-    9. Evaluates fine-tuned model after training and records before/after improvement comparison.
+    9. Optionally uploads fine-tuned adapter to Kaggle Models via Kaggle Hub.
+    10. Evaluates fine-tuned model after training and records before/after improvement comparison.
     """
     hf_token = os.getenv("HF_TOKEN") or None
+    is_kaggle_auth, kaggle_user = setup_kaggle_environment()
     device = "cuda" if torch.cuda.is_available() else "cpu"
     resolved_output = resolve_output_dir(output_dir)
     os.makedirs(resolved_output, exist_ok=True)
+
+    # Support downloading base model from Kaggle Hub via kaggle:// prefix
+    if model_id.startswith("kaggle://"):
+        kaggle_handle = model_id[len("kaggle://"):]
+        try:
+            import kagglehub
+            print(f"Downloading base model from Kaggle Hub: '{kaggle_handle}'...")
+            model_id = kagglehub.model_download(kaggle_handle)
+            print(f"Downloaded model to local path: '{model_id}'")
+        except Exception as e:
+            print(f"Failed to download model from Kaggle Hub: {e}")
+            raise
 
     # Mixed precision auto-detection & configuration
     use_bf16 = False
@@ -481,12 +891,14 @@ def run_qlora_training(
     else:
         precision_desc = "CPU (fp32)"
 
+    kaggle_status = f"Authenticated as '{kaggle_user}'" if is_kaggle_auth else "Not configured / Local mode"
     print("==================================================================")
     print("      STEAM HIT PREDICTOR - PHASE 3: 8-BIT QLORA FINE-TUNING      ")
     print("==================================================================")
     print(f"Base Model:             {model_id}")
     print(f"Quantization:           BitsAndBytes 8-bit (load_in_8bit=True)")
     print(f"Mixed Precision:        {precision_desc}")
+    print(f"Kaggle Integration:     {kaggle_status}")
     print(f"Sampling Parameters:    top_p={top_p}, temperature={temperature}")
     print(f"LoRA Configuration:     rank={lora_r}, alpha={lora_alpha}, dropout={lora_dropout}")
     print(f"Training Dataset:       {max_train_samples} samples from cleaned_data/train/")
@@ -635,12 +1047,32 @@ def run_qlora_training(
     print(f"{'Avg Latency':<32} | {before_metrics['avg_latency_sec']:>14.3f}s | {after_metrics['avg_latency_sec']:>14.3f}s | {after_metrics['avg_latency_sec'] - before_metrics['avg_latency_sec']:>+10.3f}s")
     print("==================================================================\n")
 
+    # 11. Optional Upload to Kaggle Hub Models
+    kaggle_pushed = False
+    if push_to_kaggle:
+        target_handle = kaggle_model_handle
+        if not target_handle and kaggle_user:
+            target_handle = f"{kaggle_user}/steam-vibe-qlora-adapter/transformers/default"
+        if target_handle:
+            kaggle_pushed = upload_adapter_to_kaggle(
+                local_model_dir=resolved_output,
+                handle=target_handle,
+                version_notes="Trained 8-bit QLoRA Steam Vibe Predictor adapter"
+            )
+        else:
+            print("Notice: --push-to-kaggle was specified, but neither --kaggle-model-handle was provided nor could a Kaggle username be resolved. Provide --kaggle-model-handle or configure KAGGLE_API_TOKEN in .env.")
+
     summary = {
         "model_id": model_id,
         "quantization": "8-bit (BitsAndBytesConfig load_in_8bit=True)",
         "precision": precision_desc,
         "bf16": use_bf16,
         "fp16": use_fp16,
+        "kaggle": {
+            "authenticated": is_kaggle_auth,
+            "username": kaggle_user,
+            "pushed": kaggle_pushed
+        },
         "top_p": top_p,
         "temperature": temperature,
         "eval_batch_size": eval_batch_size,
@@ -677,8 +1109,8 @@ def main():
     parser.add_argument("--model-id", type=str, default="Qwen/Qwen3.5-0.8B", help="Base model identifier")
     parser.add_argument("--data-dir", type=str, default="cleaned_data", help="Cleaned dataset directory")
     parser.add_argument("--output-dir", type=str, default="saved_models/llm_adapters/qwen_steam_vibe_8bit", help="Adapter output directory")
-    parser.add_argument("--max-train-samples", type=int, default=300, help="Number of training samples to use")
-    parser.add_argument("--max-eval-samples", type=int, default=20, help="Number of holdout test samples for evaluation (default: 20)")
+    parser.add_argument("--max-train-samples", type=int, default=10000, help="Number of training samples to use")
+    parser.add_argument("--max-eval-samples", type=int, default=100, help="Number of holdout test samples for evaluation (default: 20)")
     parser.add_argument("--eval-batch-size", type=int, default=4, help="Batch size for model evaluation generation (default: 4)")
     parser.add_argument("--use-compile", action="store_true", default=True, help="Enable torch.compile() for evaluation acceleration")
     parser.add_argument("--no-compile", dest="use_compile", action="store_false", help="Disable torch.compile()")
@@ -694,9 +1126,45 @@ def main():
     parser.add_argument("--bf16", action="store_true", default=None, help="Force bfloat16 mixed precision")
     parser.add_argument("--fp16", action="store_true", default=None, help="Force float16 mixed precision")
     parser.add_argument("--num-proc", type=int, default=None, help="CPU workers for dataset .map()")
+    parser.add_argument("--push-to-kaggle", action="store_true", default=False, help="Upload trained LoRA adapter to Kaggle Models")
+    parser.add_argument("--kaggle-model-handle", type=str, default=None, help="Kaggle Model handle, e.g. <username>/<model-name>/transformers/<variation-slug>")
+    parser.add_argument("--train-on-kaggle", "--run-on-kaggle", dest="train_on_kaggle", action="store_true", default=False, help="Submit and execute full GPU training job remotely on Kaggle")
+    parser.add_argument("--detach", action="store_true", default=False, help="Submit Kaggle training job and exit immediately without polling")
+    parser.add_argument("--pull-kaggle-output", action="store_true", default=False, help="Download output artifacts from a completed Kaggle kernel")
+    parser.add_argument("--dataset-slug", type=str, default="steam-hit-predictor-cleaned-data", help="Kaggle Dataset slug (default: steam-hit-predictor-cleaned-data)")
+    parser.add_argument("--kernel-slug", type=str, default="steam-vibe-qlora-training", help="Kaggle Kernel slug (default: steam-vibe-qlora-training)")
+    parser.add_argument("--skip-dataset-upload", action="store_true", default=False, help="Skip checking/uploading dataset to Kaggle Datasets")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
 
     args = parser.parse_args()
+
+    # Remote Kaggle execution entry points
+    if args.train_on_kaggle:
+        launch_training_on_kaggle(
+            data_dir=args.data_dir,
+            output_dir=args.output_dir,
+            dataset_slug=args.dataset_slug,
+            kernel_slug=args.kernel_slug,
+            model_id=args.model_id,
+            max_train_samples=args.max_train_samples,
+            max_eval_samples=args.max_eval_samples,
+            epochs=args.epochs,
+            batch_size=args.batch_size,
+            grad_accum=args.grad_accum,
+            learning_rate=args.lr,
+            top_p=args.top_p,
+            temperature=args.temperature,
+            detach=args.detach,
+            skip_dataset_upload=args.skip_dataset_upload
+        )
+        return
+
+    if args.pull_kaggle_output:
+        pull_kaggle_kernel_output(
+            kernel_slug=args.kernel_slug,
+            output_dir=args.output_dir
+        )
+        return
 
     run_qlora_training(
         model_id=args.model_id,
@@ -718,6 +1186,8 @@ def main():
         bf16=args.bf16,
         fp16=args.fp16,
         num_proc=args.num_proc,
+        push_to_kaggle=args.push_to_kaggle,
+        kaggle_model_handle=args.kaggle_model_handle,
         seed=args.seed
     )
 
