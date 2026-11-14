@@ -1,3 +1,13 @@
+#!/usr/bin/env python3
+"""
+Steam Hit Predictor - Phase 3: 8-Bit QLoRA Fine-Tuning Pipeline
+Fine-tunes Qwen3.5-0.8B to evaluate video game concepts and predict vibe scores
+(hype_score, story_score, nostalgia_score) from game descriptions.
+
+Optimized for execution both locally and directly inside Kaggle Notebooks (GPU T4/P100/A100).
+Supports direct input from Kaggle dataset paths (e.g. /kaggle/input/<dataset-slug>).
+"""
+
 import os
 import sys
 import re
@@ -23,7 +33,7 @@ for p in [CURRENT_DIR, PARENT_DIR]:
     if p not in sys.path:
         sys.path.insert(0, p)
 
-# Load environment variables (.env) from root or current directory
+# Load environment variables (.env) if available
 for p in [os.path.join(PARENT_DIR, ".env"), os.path.join(CURRENT_DIR, ".env"), ".env"]:
     if os.path.exists(p):
         load_dotenv(p)
@@ -32,42 +42,8 @@ logging.getLogger("transformers").setLevel(logging.ERROR)
 logging.getLogger("bitsandbytes").setLevel(logging.ERROR)
 
 
-def setup_kaggle_environment() -> Tuple[bool, Optional[str]]:
-    """
-    Sets up Kaggle authentication using the modern API Token (KAGGLE_API_TOKEN) from .env.
-    Returns (is_authenticated, username).
-    """
-    api_token = os.getenv("KAGGLE_API_TOKEN", "").strip()
-    if not api_token or api_token == "your_kaggle_api_token":
-        return False, None
-
-    os.environ["KAGGLE_API_TOKEN"] = api_token
-
-    # Write ~/.kaggle/access_token so both kagglehub and kaggle CLI recognize the token
-    try:
-        kaggle_dir = os.path.expanduser("~/.kaggle")
-        os.makedirs(kaggle_dir, exist_ok=True)
-        token_file = os.path.join(kaggle_dir, "access_token")
-        with open(token_file, "w", encoding="utf-8") as f:
-            f.write(api_token)
-    except Exception as e:
-        print(f"Note: Could not write ~/.kaggle/access_token: {e}")
-
-    try:
-        import kagglehub
-        from kagglehub.config import set_kaggle_api_token
-        set_kaggle_api_token(api_token)
-        user_info = kagglehub.whoami(verbose=False)
-        username = user_info.get("username")
-        print(f"Kaggle API successfully authenticated for user: '{username}'")
-        return True, username
-    except Exception as e:
-        print(f"Kaggle authentication note: {e}")
-        return True, None
-
-
 def is_running_on_kaggle() -> bool:
-    """Returns True if the script is running inside a Kaggle notebook or batch kernel environment."""
+    """Returns True if the script is running inside a Kaggle notebook or batch environment."""
     return (
         os.path.exists("/kaggle/working")
         or "KAGGLE_KERNEL_RUN_TYPE" in os.environ
@@ -76,26 +52,73 @@ def is_running_on_kaggle() -> bool:
 
 
 def resolve_data_dir(data_dir: str = "cleaned_data") -> str:
-    """Resolves data directory path whether executed locally or inside a Kaggle kernel."""
+    """
+    Resolves data directory path whether executed locally or inside a Kaggle notebook.
+    Handles:
+    1. Direct paths (e.g. '/kaggle/input/steam-hit-predictor-cleaned-data' or 'cleaned_data')
+    2. Kaggle parent input folder ('/kaggle/input')
+    3. Kaggle dataset handles (e.g. 'kareemghazi/steam-hit-predictor-cleaned-data')
+    4. Auto-discovery across mounted datasets in /kaggle/input/
+    """
+    data_dir_str = str(data_dir).strip()
+
+    # Case 1: If data_dir is a Kaggle dataset handle ("<owner>/<slug>")
+    if "/" in data_dir_str and not os.path.exists(data_dir_str) and not data_dir_str.startswith(("/", "\\", ".")):
+        parts = data_dir_str.split("/")
+        if len(parts) == 2 and not any(p in parts[0] for p in [":", "\\"]):
+            slug = parts[1]
+            candidate = f"/kaggle/input/{slug}"
+            if os.path.exists(candidate):
+                data_dir_str = candidate
+
+    # Case 2: Direct path check (e.g. /kaggle/input/<slug> or local cleaned_data)
+    if os.path.exists(data_dir_str):
+        # Direct check for train/games.csv
+        if os.path.exists(os.path.join(data_dir_str, "train", "games.csv")):
+            return data_dir_str if data_dir_str.startswith("/kaggle") else os.path.abspath(data_dir_str)
+
+        # Search inside data_dir for split subdirectories
+        for root, dirs, files in os.walk(data_dir_str):
+            if "games.csv" in files and os.path.basename(root) in ["train", "valid", "test"]:
+                split_dir = os.path.dirname(root)
+                return split_dir if split_dir.startswith("/kaggle") else os.path.abspath(split_dir)
+            if os.path.basename(root) == "cleaned_data" and any(d in dirs for d in ["train", "test"]):
+                return root if root.startswith("/kaggle") else os.path.abspath(root)
+
+    # Case 3: If running on Kaggle, scan /kaggle/input for mounted datasets
     if is_running_on_kaggle():
         kaggle_input = "/kaggle/input"
         if os.path.exists(kaggle_input):
             for root, dirs, files in os.walk(kaggle_input):
                 if "games.csv" in files and os.path.basename(root) in ["train", "valid", "test"]:
-                    return os.path.dirname(root)
+                    found_dir = os.path.dirname(root)
+                    print(f"Auto-detected Kaggle dataset at: '{found_dir}'")
+                    return found_dir
                 if os.path.basename(root) == "cleaned_data" and any(d in dirs for d in ["train", "test"]):
                     return root
 
+    # Case 4: Local filesystem fallbacks
     candidates = [
-        data_dir,
-        os.path.join(PARENT_DIR, data_dir),
-        os.path.join(CURRENT_DIR, "..", data_dir),
+        data_dir_str,
+        os.path.join(PARENT_DIR, data_dir_str),
+        os.path.join(CURRENT_DIR, "..", data_dir_str),
+        os.path.join(CURRENT_DIR, data_dir_str),
+        "cleaned_data",
+        os.path.join(PARENT_DIR, "cleaned_data"),
     ]
-    return next((os.path.abspath(c) for c in candidates if os.path.exists(c)), os.path.abspath(data_dir))
+    for c in candidates:
+        if os.path.exists(c):
+            if os.path.exists(os.path.join(c, "train", "games.csv")):
+                return os.path.abspath(c)
+            for root, dirs, files in os.walk(c):
+                if "games.csv" in files and os.path.basename(root) in ["train", "valid", "test"]:
+                    return os.path.abspath(os.path.dirname(root))
+
+    return data_dir_str if data_dir_str.startswith("/kaggle") else os.path.abspath(data_dir_str)
 
 
 def resolve_output_dir(output_dir: str = "saved_models/llm_adapters/qwen_steam_vibe_8bit") -> str:
-    """Resolves output directory path relative to project structure or Kaggle working directory."""
+    """Resolves output directory path. On Kaggle, routes to /kaggle/working to ensure write access."""
     if is_running_on_kaggle():
         if not output_dir.startswith("/kaggle/working"):
             basename = os.path.basename(output_dir.rstrip("/\\"))
@@ -146,7 +169,7 @@ def load_cleaned_data_split(
     if max_samples and max_samples < len(merged):
         merged = merged.sample(n=max_samples, random_state=seed).reset_index(drop=True)
 
-    print(f"Loaded '{split}' split: {len(merged):,} games paired with descriptions.")
+    print(f"Loaded '{split}' split from '{resolved_dir}': {len(merged):,} games.")
     return merged
 
 
@@ -158,169 +181,160 @@ def build_system_instruction() -> str:
         "2. story_score: narrative depth, lore, worldbuilding, or emotional engagement.\n"
         "3. nostalgia_score: retro aesthetic, classic genre homage, or legacy franchise appeal.\n\n"
         "You MUST respond ONLY with a valid JSON object matching this exact schema:\n"
-        "{\n"
-        '  "hype_score": float,\n'
-        '  "story_score": float,\n'
-        '  "nostalgia_score": float\n'
-        "}"
+        '{\n  "hype_score": float,\n  "story_score": float,\n  "nostalgia_score": float\n}\n'
+        "Do NOT include markdown formatting, code fences, or any explanation outside the JSON."
     )
 
 
-def format_instruction_prompt(
-    tokenizer: Any,
+def format_vibe_prompt(
     game_name: str,
     genres: str,
     description: str,
     target_scores: Optional[Dict[str, float]] = None
 ) -> str:
-    """Formats prompt using the tokenizer chat template with optional ground-truth target JSON."""
-    system_instruction = build_system_instruction()
+    """Formats prompt following Qwen chat template."""
+    system_inst = build_system_instruction()
     user_content = (
-        f"Game Title: {game_name}\n"
+        f"Game: {game_name}\n"
         f"Genres: {genres}\n"
-        f"Description: {description.strip()[:1000]}\n\n"
-        "Output the JSON evaluation now:"
+        f"Description:\n{description.strip()}"
     )
 
-    messages = [
-        {"role": "system", "content": system_instruction},
-        {"role": "user", "content": user_content}
-    ]
+    prompt = (
+        f"<|im_start|>system\n{system_inst}<|im_end|>\n"
+        f"<|im_start|>user\n{user_content}<|im_end|>\n"
+        f"<|im_start|>assistant\n"
+    )
 
     if target_scores is not None:
-        assistant_content = json.dumps({
+        target_json = json.dumps({
             "hype_score": round(float(target_scores["hype_score"]), 1),
             "story_score": round(float(target_scores["story_score"]), 1),
             "nostalgia_score": round(float(target_scores["nostalgia_score"]), 1)
-        }, indent=2)
-        messages.append({"role": "assistant", "content": assistant_content})
+        })
+        prompt += f"{target_json}<|im_end|>"
 
-    if hasattr(tokenizer, "apply_chat_template"):
-        return tokenizer.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=(target_scores is None)
-        )
-    else:
-        if target_scores is not None:
-            return f"{system_instruction}\n\nUser: {user_content}\n\nAssistant: {assistant_content}"
-        return f"{system_instruction}\n\nUser: {user_content}\n\nAssistant:"
+    return prompt
 
 
-def prepare_hf_training_dataset(df: pd.DataFrame, tokenizer: Any) -> Dataset:
-    """Vectorized preparation of the training dataset using .map(batched=True)."""
-    keep_cols = ["name", "genres", "clean_description", "hype_score", "story_score", "nostalgia_score"]
-    filtered_df = df[[c for c in keep_cols if c in df.columns]].copy()
-    dataset = Dataset.from_pandas(filtered_df, preserve_index=False)
-    num_proc = max(1, min(4, os.cpu_count() or 1))
-
-    def batch_format_prompts(batch: Dict[str, List[Any]]) -> Dict[str, List[str]]:
-        names = batch.get("name", ["Unknown Game"] * len(batch["clean_description"]))
-        genres_list = batch.get("genres", ["Indie"] * len(batch["clean_description"]))
-        descriptions = batch.get("clean_description", [""] * len(batch["clean_description"]))
-        hype_scores = batch.get("hype_score", [5.0] * len(batch["clean_description"]))
-        story_scores = batch.get("story_score", [5.0] * len(batch["clean_description"]))
-        nostalgia_scores = batch.get("nostalgia_score", [5.0] * len(batch["clean_description"]))
-
-        formatted_texts = []
-        for name, genres, desc, hype, story, nostalgia in zip(
-            names, genres_list, descriptions, hype_scores, story_scores, nostalgia_scores
-        ):
-            scores = {
-                "hype_score": float(hype),
-                "story_score": float(story),
-                "nostalgia_score": float(nostalgia)
-            }
-            text = format_instruction_prompt(
-                tokenizer=tokenizer,
-                game_name=str(name),
-                genres=str(genres),
-                description=str(desc),
-                target_scores=scores
-            )
-            formatted_texts.append(text)
-        return {"text": formatted_texts}
+def parse_vibe_scores_from_text(raw_text: str) -> Optional[Dict[str, float]]:
+    """Extracts and validates JSON vibe scores from model generation."""
+    clean = re.sub(r"<\|im_end\|>.*", "", raw_text, flags=re.DOTALL).strip()
+    match = re.search(r"\{[^{}]*\}", clean)
+    if not match:
+        return None
 
     try:
-        formatted_dataset = dataset.map(
-            batch_format_prompts,
-            batched=True,
-            batch_size=1000,
-            num_proc=num_proc,
-            remove_columns=dataset.column_names,
-            desc="Vectorizing instruction dataset"
-        )
-    except Exception as e:
-        print(f"Fallback to num_proc=1 ({e})")
-        formatted_dataset = dataset.map(
-            batch_format_prompts,
-            batched=True,
-            batch_size=1000,
-            num_proc=1,
-            remove_columns=dataset.column_names,
-            desc="Vectorizing instruction dataset"
-        )
-
-    return formatted_dataset
-
-
-def parse_vibe_scores_from_text(text: str) -> Optional[Dict[str, float]]:
-    """Extracts and validates JSON vibe scores from model generation text."""
-    try:
-        match = re.search(r"\{[^{}]*\}", text, re.DOTALL)
-        if not match:
-            return None
         data = json.loads(match.group(0))
-        required = ["hype_score", "story_score", "nostalgia_score"]
-        if not all(k in data for k in required):
+        required_keys = ["hype_score", "story_score", "nostalgia_score"]
+        if not all(k in data for k in required_keys):
             return None
-        scores = {}
-        for k in required:
+
+        result = {}
+        for k in required_keys:
             val = float(data[k])
-            scores[k] = max(1.0, min(10.0, round(val, 1)))
-        return scores
+            val = max(1.0, min(10.0, val))
+            result[k] = round(val, 2)
+        return result
     except Exception:
         return None
 
 
+def prepare_hf_training_dataset(
+    df: pd.DataFrame,
+    tokenizer: AutoTokenizer,
+    max_length: int = 512
+) -> Dataset:
+    """Vectorized pre-tokenization and formatting using Hugging Face Dataset.map."""
+    print(f"Preparing HF Dataset ({len(df)} samples) with parallel .map()...")
+
+    records = {
+        "name": df["name"].fillna("Unknown Game").tolist(),
+        "genres": df["genres"].fillna("Indie").tolist(),
+        "clean_description": df["clean_description"].fillna("").tolist(),
+        "hype_score": df["hype_score"].tolist(),
+        "story_score": df["story_score"].tolist(),
+        "nostalgia_score": df["nostalgia_score"].tolist(),
+    }
+    raw_dataset = Dataset.from_dict(records)
+
+    def _batch_format_prompts(batch):
+        formatted_texts = []
+        for name, genres, desc, hype, story, nost in zip(
+            batch["name"], batch["genres"], batch["clean_description"],
+            batch["hype_score"], batch["story_score"], batch["nostalgia_score"]
+        ):
+            target = {
+                "hype_score": float(hype),
+                "story_score": float(story),
+                "nostalgia_score": float(nost)
+            }
+            formatted_texts.append(
+                format_vibe_prompt(
+                    game_name=str(name),
+                    genres=str(genres),
+                    description=str(desc),
+                    target_scores=target
+                )
+            )
+        return {"text": formatted_texts}
+
+    num_procs = min(4, os.cpu_count() or 1)
+    mapped_dataset = raw_dataset.map(
+        _batch_format_prompts,
+        batched=True,
+        batch_size=500,
+        num_proc=num_procs,
+        remove_columns=raw_dataset.column_names,
+        desc="Vectorizing Training Prompts"
+    )
+
+    print(f"HF Dataset ready: {len(mapped_dataset)} samples.")
+    return mapped_dataset
+
+
 def evaluate_model_on_dataset(
-    model: Any,
-    tokenizer: Any,
+    model: AutoModelForCausalLM,
+    tokenizer: AutoTokenizer,
     df_eval: pd.DataFrame,
-    device: str,
+    device: str = "cuda",
     top_p: float = 0.9,
     temperature: float = 0.7,
     eval_batch_size: int = 4,
-    use_compile: bool = True,
-    label: str = "Evaluation Benchmark"
+    use_compile: bool = False,
+    label: str = "Evaluation"
 ) -> Dict[str, Any]:
-    """Evaluates the model on holdout test samples with batched generation."""
-    print(f"\n--- Running {label} ({len(df_eval)} samples, batch_size={eval_batch_size}) ---")
-    model.eval()
+    """Batched evaluation on holdout dataset measuring validity, MAE, and latency."""
+    print(f"\n--- Running Batched Evaluation: {label} (N={len(df_eval)}, batch_size={eval_batch_size}) ---")
 
     orig_pad_side = tokenizer.padding_side
     tokenizer.padding_side = "left"
 
     eval_model = model
-    if use_compile and hasattr(torch, "compile") and not is_running_on_kaggle():
+    if use_compile and hasattr(torch, "compile") and device == "cuda":
         try:
+            print("Accelerating evaluation with torch.compile()...")
             eval_model = torch.compile(model)
         except Exception as e:
-            print(f"torch.compile notice: {e}. Using uncompiled model.")
+            print(f"torch.compile note: {e}, falling back to standard execution.")
             eval_model = model
 
-    total_samples = len(df_eval)
     valid_count = 0
     errors = []
     latencies = []
     evaluated_games = []
+    total_samples = len(df_eval)
 
-    batches = [df_eval.iloc[i : min(i + eval_batch_size, total_samples)] for i in range(0, total_samples, eval_batch_size)]
+    eval_model.eval()
+    num_batches = int(np.ceil(total_samples / eval_batch_size))
 
-    for batch in tqdm(batches, desc=f"Evaluating ({label})", unit="batch"):
+    for b in tqdm(range(num_batches), desc=f"Evaluating ({label})", unit="batch"):
+        start_idx = b * eval_batch_size
+        end_idx = min(start_idx + eval_batch_size, total_samples)
+        batch = df_eval.iloc[start_idx:end_idx]
+
         prompts = [
-            format_instruction_prompt(
-                tokenizer=tokenizer,
+            format_vibe_prompt(
                 game_name=str(row.get("name", "Unknown Game")),
                 genres=str(row.get("genres", "Indie")),
                 description=str(row.get("clean_description", "")),
@@ -418,7 +432,6 @@ def run_qlora_training(
     lora_dropout: float = 0.05,
     top_p: float = 0.9,
     temperature: float = 0.7,
-    fp16: Optional[bool] = None,
     seed: int = 42
 ) -> Dict[str, Any]:
     """
@@ -448,7 +461,7 @@ def run_qlora_training(
     print(f"Quantization:           BitsAndBytes 8-bit (load_in_8bit=True)")
     print(f"Mixed Precision:        {precision_desc}")
     print(f"Training Epochs:        {epochs}")
-    print(f"Training Dataset:       {sample_desc} from cleaned_data/train/")
+    print(f"Training Dataset:       {sample_desc} from {data_dir}")
     print(f"Sampling Parameters:    top_p={top_p}, temperature={temperature}")
     print(f"Target Output Adapter:  {resolved_output}")
     print("==================================================================\n")
@@ -556,9 +569,11 @@ def run_qlora_training(
     trainer.model.save_pretrained(resolved_output)
     tokenizer.save_pretrained(resolved_output)
 
-    root_adapter_dir = os.path.dirname(resolved_output)
-    trainer.model.save_pretrained(root_adapter_dir)
-    print(f"Saved primary adapter artifacts to: '{root_adapter_dir}' and '{resolved_output}'")
+    # Also persist to parent adapter folder if running locally
+    if not is_running_on_kaggle():
+        root_adapter_dir = os.path.dirname(resolved_output)
+        trainer.model.save_pretrained(root_adapter_dir)
+        print(f"Saved primary adapter artifacts to: '{root_adapter_dir}' and '{resolved_output}'")
 
     # 9. After Evaluation
     after_metrics = evaluate_model_on_dataset(
@@ -605,7 +620,11 @@ def run_qlora_training(
         }
     }
 
-    results_dir = os.path.join(CURRENT_DIR, "baseline_results")
+    # Save summary report to baseline_results
+    results_dir = os.path.join(
+        "/kaggle/working" if is_running_on_kaggle() else CURRENT_DIR,
+        "baseline_results"
+    )
     os.makedirs(results_dir, exist_ok=True)
     results_path = os.path.join(results_dir, "qlora_training_results.json")
     with open(results_path, "w", encoding="utf-8") as f:
@@ -615,273 +634,56 @@ def run_qlora_training(
     return summary
 
 
-def launch_training_on_kaggle(
-    epochs: int = 5,
-    batch_size: int = 2,
-    max_train_samples: Optional[int] = None,
-    max_eval_samples: int = 20,
-    detach: bool = False,
-    data_dir: str = "cleaned_data",
-    output_dir: str = "saved_models/llm_adapters/qwen_steam_vibe_8bit"
-) -> bool:
-    """
-    Submits and manages a full GPU-accelerated QLoRA training job remotely on Kaggle:
-    1. Authenticates using KAGGLE_API_TOKEN from .env.
-    2. Uploads or checks the cleaned dataset on Kaggle Datasets (<username>/steam-hit-predictor-cleaned-data).
-    3. Builds GPU kernel metadata (enable_gpu: true, enable_internet: true).
-    4. Pushes training code to Kaggle Kernels (<username>/steam-vibe-qlora-training).
-    5. Monitors execution status until completion.
-    6. Automatically downloads trained LoRA adapter weights directly into local output_dir.
-    """
-    is_auth, username = setup_kaggle_environment()
-    if not is_auth or not username:
-        print("\n" + "=" * 70)
-        print(" [!] Kaggle Authentication Required for Remote Training")
-        print("=" * 70)
-        print("To run training on Kaggle's free GPU cloud:")
-        print("1. Go to https://www.kaggle.com/settings/api")
-        print("2. Under 'API Tokens', click 'Generate New Token'")
-        print("3. Copy the token and paste it into your .env file as:")
-        print("   KAGGLE_API_TOKEN=<your_copied_token>")
-        print("=" * 70 + "\n")
-        return False
-
-    try:
-        from kaggle.api.kaggle_api_extended import KaggleApi
-        api = KaggleApi()
-        api.authenticate()
-    except Exception as e:
-        print(f"Error authenticating with Kaggle API: {e}")
-        return False
-
-    resolved_data = resolve_data_dir(data_dir)
-    resolved_output = resolve_output_dir(output_dir)
-    dataset_ref = f"{username}/steam-hit-predictor-cleaned-data"
-    kernel_ref = f"{username}/steam-vibe-qlora-training"
-
-    sample_desc = f"{max_train_samples} samples" if max_train_samples else "Full Dataset (all 22,248 games)"
-
-    print("==================================================================")
-    print("      LAUNCHING STEAM VIBE QLORA TRAINING ON KAGGLE GPU          ")
-    print("==================================================================")
-    print(f"Kaggle User:           {username}")
-    print(f"Kaggle Dataset:        {dataset_ref}")
-    print(f"Kaggle Kernel:         {kernel_ref}")
-    print(f"Training Epochs:       {epochs}")
-    print(f"Training Samples:      {sample_desc}")
-    print(f"Target Adapter Output: {resolved_output}")
-    print("==================================================================\n")
-
-    # Step 1: Ensure Dataset exists on Kaggle
-    print(f"Checking if dataset '{dataset_ref}' exists on Kaggle...")
-    dataset_exists = False
-    try:
-        status = str(api.dataset_status(dataset_ref))
-        print(f"Dataset '{dataset_ref}' is present on Kaggle (status: {status}).")
-        dataset_exists = True
-    except Exception:
-        dataset_exists = False
-
-    if not dataset_exists:
-        print(f"Uploading '{resolved_data}' to Kaggle Datasets as '{dataset_ref}'...")
-        try:
-            import kagglehub
-            kagglehub.dataset_upload(
-                handle=dataset_ref,
-                local_dataset_dir=resolved_data,
-                version_notes="Cleaned Steam dataset splits for QLoRA training"
-            )
-            print(f"Dataset upload complete: https://www.kaggle.com/datasets/{dataset_ref}")
-        except Exception as e:
-            print(f"Dataset upload note: {e}")
-
-    # Step 2: Prepare Kaggle Kernel Staging Directory
-    staging_dir = os.path.join(PARENT_DIR, "saved_models", "_kaggle_kernel")
-    os.makedirs(staging_dir, exist_ok=True)
-
-    current_script_path = os.path.abspath(__file__)
-    staged_script_path = os.path.join(staging_dir, "qlora_training.py")
-    import shutil
-    shutil.copy2(current_script_path, staged_script_path)
-
-    driver_script_path = os.path.join(staging_dir, "kaggle_train_driver.py")
-    sample_code = "None" if max_train_samples is None else str(max_train_samples)
-    driver_code = f'''import os
-import sys
-import subprocess
-
-print("==================================================================")
-print("     KAGGLE GPU: STEAM VIBE 8-BIT QLORA TRAINING (5 EPOCHS)       ")
-print("==================================================================")
-
-subprocess.check_call([
-    sys.executable, "-m", "pip", "install", "-q",
-    "transformers>=4.40.0", "peft>=0.10.0", "trl>=0.8.0",
-    "bitsandbytes>=0.43.0", "accelerate>=0.28.0", "datasets>=2.18.0", "tqdm"
-])
-
-import qlora_training
-
-qlora_training.run_qlora_training(
-    data_dir="/kaggle/input",
-    output_dir="/kaggle/working/qwen_steam_vibe_8bit",
-    max_train_samples={sample_code},
-    max_eval_samples={max_eval_samples},
-    epochs={epochs},
-    batch_size={batch_size},
-    fp16=True,
-    use_compile=False
-)
-print("Kaggle GPU training finished! Output saved to /kaggle/working/.")
-'''
-    with open(driver_script_path, "w", encoding="utf-8") as f:
-        f.write(driver_code)
-
-    metadata = {
-        "id": kernel_ref,
-        "title": "Steam Vibe QLoRA Training",
-        "code_file": "kaggle_train_driver.py",
-        "language": "python",
-        "kernel_type": "script",
-        "is_private": "true",
-        "enable_gpu": "true",
-        "enable_tpu": "false",
-        "enable_internet": "true",
-        "dataset_sources": [dataset_ref],
-        "competition_sources": [],
-        "kernel_sources": [],
-        "model_sources": []
-    }
-    metadata_path = os.path.join(staging_dir, "kernel-metadata.json")
-    with open(metadata_path, "w", encoding="utf-8") as f:
-        json.dump(metadata, f, indent=2)
-
-    # Step 3: Push Kernel to Kaggle
-    print(f"Pushing GPU kernel package to Kaggle: '{kernel_ref}'...")
-    try:
-        api.kernels_push(staging_dir)
-        print(f"Kernel successfully submitted to Kaggle!")
-        print(f"Track execution online at: https://www.kaggle.com/code/{kernel_ref}\n")
-    except Exception as e:
-        print(f"Error pushing kernel to Kaggle: {e}")
-        return False
-
-    if detach:
-        print("Detach mode: Kernel running in background on Kaggle.")
-        print("Download adapter weights anytime when done by running:")
-        print("  python llm-pipeline/qlora_training.py --pull")
-        return True
-
-    # Step 4: Monitor Execution
-    print("Monitoring Kaggle GPU execution (polling status)...")
-    last_status = None
-    start_poll_t = time.time()
-    while True:
-        time.sleep(20)
-        try:
-            status_obj = api.kernels_status(kernel_ref)
-            status_str = str(getattr(status_obj, "status", status_obj)).lower()
-            msg = getattr(status_obj, "failure_message", None)
-            elapsed = time.time() - start_poll_t
-
-            if status_str != last_status:
-                print(f"  [{elapsed:6.1f}s] Kernel status: '{status_str}'")
-                last_status = status_str
-
-            if status_str == "complete":
-                print(f"\nKaggle GPU training completed successfully in {elapsed:.1f}s!")
-                break
-            elif status_str in ["error", "failed", "cancelacknowledged"]:
-                print(f"\n[!] Kaggle kernel failed with status: '{status_str}'.")
-                if msg:
-                    print(f"Failure message: {msg}")
-                return False
-        except Exception as e:
-            print(f"Notice during status check: {e}")
-
-    # Step 5: Pull Output Artifacts
-    return pull_kaggle_kernel_output(output_dir=resolved_output)
-
-
-def pull_kaggle_kernel_output(
-    output_dir: str = "saved_models/llm_adapters/qwen_steam_vibe_8bit"
-) -> bool:
-    """Downloads trained adapter outputs from the completed Kaggle kernel."""
-    is_auth, username = setup_kaggle_environment()
-    if not is_auth or not username:
-        print("Kaggle authentication required. Please set KAGGLE_API_TOKEN in .env.")
-        return False
-
-    kernel_ref = f"{username}/steam-vibe-qlora-training"
-    try:
-        from kaggle.api.kaggle_api_extended import KaggleApi
-        api = KaggleApi()
-        api.authenticate()
-    except Exception as e:
-        print(f"Error authenticating with Kaggle API: {e}")
-        return False
-
-    resolved_output = resolve_output_dir(output_dir)
-    os.makedirs(resolved_output, exist_ok=True)
-    print(f"\nDownloading outputs from Kaggle kernel '{kernel_ref}' into '{resolved_output}'...")
-
-    try:
-        outfiles, _ = api.kernels_output(kernel_ref, path=resolved_output, force=True, quiet=False)
-        print(f"Downloaded {len(outfiles)} file(s) from Kaggle.")
-
-        root_adapter_dir = os.path.dirname(resolved_output)
-        import shutil
-        for fname in ["adapter_config.json", "adapter_model.safetensors"]:
-            candidates = [
-                os.path.join(resolved_output, fname),
-                os.path.join(resolved_output, "qwen_steam_vibe_8bit", fname),
-            ]
-            for c in candidates:
-                if os.path.exists(c):
-                    target = os.path.join(root_adapter_dir, fname)
-                    shutil.copy2(c, target)
-                    print(f"Copied primary adapter artifact: {fname} -> {target}")
-
-        print(f"\nSuccessfully synchronized fine-tuned LoRA adapter from Kaggle!")
-        print(f"Local adapter location: '{resolved_output}'")
-        return True
-    except Exception as e:
-        print(f"Failed to download outputs from Kaggle kernel: {e}")
-        return False
-
-
 def main():
     parser = argparse.ArgumentParser(
-        description="Steam Hit Predictor - Phase 3: 8-bit QLoRA Fine-Tuning (Default: Kaggle GPU)"
+        description="Steam Hit Predictor - Phase 3: 8-bit QLoRA Fine-Tuning"
     )
-    parser.add_argument("--epochs", type=int, default=5, help="Number of training epochs (default: 5)")
-    parser.add_argument("--batch-size", type=int, default=2, help="Per-device train batch size (default: 2)")
-    parser.add_argument("--local", action="store_true", default=False, help="Force training to run locally on PC instead of Kaggle GPU")
-    parser.add_argument("--detach", action="store_true", default=False, help="Submit Kaggle GPU job and exit immediately without polling")
-    parser.add_argument("--pull", action="store_true", default=False, help="Download output artifacts from a completed Kaggle kernel")
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        default="cleaned_data",
+        help="Path to dataset directory (e.g. 'cleaned_data' or '/kaggle/input/<dataset-slug>')"
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=str,
+        default="saved_models/llm_adapters/qwen_steam_vibe_8bit",
+        help="Directory where trained adapter weights and tokenizer will be saved"
+    )
+    parser.add_argument(
+        "--epochs",
+        type=int,
+        default=5,
+        help="Number of fine-tuning epochs (default: 5)"
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=2,
+        help="Per-device train batch size (default: 2)"
+    )
+    parser.add_argument(
+        "--max-train-samples",
+        type=int,
+        default=None,
+        help="Maximum training samples to use (default: None for full training set)"
+    )
+    parser.add_argument(
+        "--max-eval-samples",
+        type=int,
+        default=20,
+        help="Number of holdout test samples for before/after evaluation (default: 20)"
+    )
 
     args = parser.parse_args()
 
-    # 1. Pull output from completed Kaggle job
-    if args.pull:
-        pull_kaggle_kernel_output()
-        return
-
-    # 2. If running inside Kaggle environment OR user explicitly requests local PC training
-    if is_running_on_kaggle() or args.local:
-        run_qlora_training(
-            epochs=args.epochs,
-            batch_size=args.batch_size,
-            max_train_samples=None
-        )
-        return
-
-    # 3. DEFAULT: Launch full GPU training job remotely on Kaggle
-    launch_training_on_kaggle(
+    run_qlora_training(
+        data_dir=args.data_dir,
+        output_dir=args.output_dir,
         epochs=args.epochs,
         batch_size=args.batch_size,
-        max_train_samples=None,
-        detach=args.detach
+        max_train_samples=args.max_train_samples,
+        max_eval_samples=args.max_eval_samples
     )
 
 
