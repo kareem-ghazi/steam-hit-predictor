@@ -101,73 +101,74 @@
     - **Per-Game Evaluation Latency:** **4.201s** (Batched x4 with `torch.compile()`)
     - Metrics serialized to [llm-pipeline/baseline_results/qlora_training_results.json](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/llm-pipeline/baseline_results/qlora_training_results.json).
 
+- **Phase 4: The FastAPI Backend ([backend/main.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/backend/main.py), [backend/requirements.txt](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/backend/requirements.txt)):**
+  - Built production-ready, asynchronous FastAPI backend server uniting QLoRA LLM inference and the XGBoost classifier.
+  - **Memory Initialization:**
+    - Loads all 27,810 historical games from `cleaned_data/` (`train`, `valid`, `test`) into a fast, in-memory Pandas dataframe with full metadata and descriptions.
+    - Loads the trained XGBoost classifier artifact (`xgboost_hit_predictor.pkl`) and `SteamFeatureTransformer` (194 active model features).
+    - Loads `price_scaler.pkl` (`MinMaxScaler`).
+    - Initializes the fine-tuned 8-bit QLoRA adapter (`Qwen3.5-0.8B` with `PeftModel`) on CUDA GPU (with safe heuristic fallback).
+  - **Endpoints Implemented & Tested:**
+    - `POST /predict`: Accepts new game concept parameters, dynamically generates `hype_score`, `story_score`, and `nostalgia_score` via the local QLoRA model, runs feature transformation, computes XGBoost Hit/Flop prediction & probability, projects Steam review tier, and returns 3 similar historical games.
+    - `GET /similar`: Finds top 3 historical games matching by genre, price bracket (Free, Budget <$10, Mid-Tier $10-$30, Premium $30+), and rating tier.
+    - `GET /games`: Paginated, searchable, and filterable endpoint across the 27,810 cleaned games to power Phase 5's Dataset Explorer.
+    - `GET /metadata`: Provides dynamic dropdown options (genres, rating tiers, price brackets).
+    - `GET /` & `GET /health`: Health checks and model telemetry.
+  - **CORS Middleware:** Enabled full cross-origin resource sharing (`allow_origins=["*"]`) for seamless React frontend integration.
+  - **End-to-End Test Verification:** Verified via FastAPI `TestClient` with all endpoints returning HTTP 200 and accurate predictions.
+
 ## 2. Dependencies & Runtime
+- `fastapi` 0.165.0
+- `uvicorn` 0.54.0
+- `pydantic` 2.13.5
+- `httpx` 0.28.1
+- `pytest` 9.2.0
 - `bitsandbytes` 0.50.2
 - `peft` 0.21.2
 - `trl` 1.17.1
 - `datasets` 5.1.0
-- `kagglehub` 1.0.3
-- `kaggle` 2.2.5
 - `torch` (CUDA 12.1+ compatible, running on RTX 4060 Laptop GPU)
 - `transformers` 5.18.0
 - `accelerate` 1.15.0
-- `xgboost`
-- `psutil`
-- `python-dotenv`
-- `scikit-learn`
-- `pandas`
-- `numpy`
+- `xgboost` 2.1.4
+- `scikit-learn` 1.6.1
+- `pandas` 2.2.3
+- `numpy` 2.2.3
+- `python-dotenv` 1.2.4
 
 ## 3. Current Data Flow
 ```text
-raw_data/dataset_attributes/*.csv (51 attribute files)
-                       │
-                       ▼
-           [ml-pipeline/cleaner.py]
-           - Standardizes delimited strings & unifies prices to USD
-           - Drops missing dev/pub/name/genres/platforms entirely
-           - Casts integer attributes (reviews, achievements, age, english)
-                       │
-                       ▼
-          [ml-pipeline/data_prep.py]
-           - Filters total_reviews >= 50 first
-           - Computes approval_rate, rating_text, is_hit
-           - Retains review leakage columns for safety
-           - Generates vibe scores via generate_vibe_scores.py (no text leakage)
-           - MinMax scales price to [0, 1] on train split -> price_scaler.pkl
-           - Fits SteamFeatureTransformer (194 features, counts removed)
-           - Sorts splits strictly by appid ascending
-           - Assembles ordered games.csv & games_descriptions.csv
-           - Persists price_scaler.pkl and feature_transformer.pkl
-                       │
-                       ▼
-          cleaned_data/ (Pre-prepared with 194 features, sorted by appid)
-          ├── train/
-          │   ├── games.csv              (22,248 rows, 209 cols, 194 model features, target is_hit at end)
-          │   └── games_descriptions.csv (22,248 rows, 5 cols: appid, short, about, detailed, clean)
-          ├── valid/
-          │   ├── games.csv              (2,781 rows, 209 cols, 194 model features)
-          │   └── games_descriptions.csv (2,781 rows, 5 cols)
-          └── test/
-              ├── games.csv              (2,781 rows, 209 cols, 194 model features)
-              └── games_descriptions.csv (2,781 rows, 5 cols)
-                       │
-         ┌─────────────┼────────────────────────┐
-         │             │                        │
-         ▼             ▼                        ▼
-[ml-pipeline/    [llm-pipeline/           [llm-pipeline/
- xgboost_train.py] inference_baseline.py]  qlora_training.py]
-- Consumes 194   - RAM & VRAM tracking    - 8-bit BitsAndBytes
-  features       - JSON validation          quantization
-- Categoricals                             - Modified top_p=0.9
-- Early stopping                           - SFTTrainer fine-tuning
-         │                                 - Before/After eval
-         ▼                                      │
-saved_models/ml_models/                         ▼
-xgboost_hit_predictor.pkl                saved_models/llm_adapters/
-(96.26% test acc, 96.70% F1)             adapter_model.safetensors (MAE: 1.42)
+React Frontend / User Request
+           │
+           │  POST /predict (JSON: name, description, genres, price, platforms, ...)
+           ▼
+[backend/main.py] (FastAPI Server)
+           │
+           ├──► 1. QLoRA Adapter (Qwen3.5-0.8B on GPU)
+           │       - Evaluates description & concept
+           │       - Extracts vibe scores: {hype, story, nostalgia}
+           │
+           ├──► 2. Feature Transformer (SteamFeatureTransformer)
+           │       - Multi-label binarization (genres, categories, tags)
+           │       - Platform multi-hot & native categoricals
+           │       - Assembles exact 194 training feature vector
+           │
+           ├──► 3. XGBoost Classifier (xgboost_hit_predictor.pkl)
+           │       - Evaluates 194 features
+           │       - Predicts Hit (1) / Flop (0) and probability
+           │       - Projects Steam rating tier
+           │
+           └──► 4. Similarity Engine (27,810 Historical Games in Memory)
+                   - Matches genre, price tier & rating tier
+                   - Returns top 3 most relevant reference games
+           │
+           ▼
+JSON Response (Hit/Flop, Probability, Vibe Scores, 3 Similar Games)
 ```
 
 ## 4. Next Step
-- **Target File:** `backend/main.py`
-- **Goal:** Phase 4: The FastAPI Backend - Build `backend/main.py` that loads `cleaned_data/` into memory and initializes both the XGBoost classifier (`xgboost_hit_predictor.pkl`) and the fine-tuned QLoRA adapter (`saved_models/llm_adapters/`), creating `/predict` (accepting new game concepts, predicting vibe scores with LLM, and predicting hit/flop with XGBoost) and `/similar` (returning 3 historical matching games).
+- **Target Component:** Phase 5: The React Frontend Dashboard (`frontend/`)
+- **Goal:**
+  - Build `DatasetExplorer.jsx` to display and filter `cleaned_data/` games in a UI grid, highlighting `rating_text`.
+  - Build `PredictionStudio.jsx` (Developer Studio) to accept game parameters and send requests to `POST /predict`.
+  - Build `ResultsPane.jsx` / Dashboard in `App.jsx` to render the XGBoost prediction, vibe scores, and 3 similar games.

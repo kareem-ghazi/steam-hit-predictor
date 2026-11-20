@@ -136,9 +136,9 @@ Please begin with Phase 1. Output the code, explain it briefly, and then output 
 
 #### Phase 4: The FastAPI Backend (backend/)
 
-* [ ] Create `main.py` that loads `cleaned_data/` into memory and initializes both the XGBoost classifier and the QLoRA adapter.
-* [ ] Create a `/predict` endpoint that accepts new game data, processes the description through the local LLM pipeline to extract vibe scores, runs the XGBoost prediction, and returns the result.
-* [ ] Create a `/similar` endpoint that filters the loaded dataset to return 3 historical games matching the predicted game's genre, price bracket, and `rating_text`.
+* [x] Create `main.py` that loads `cleaned_data/` into memory and initializes both the XGBoost classifier and the QLoRA adapter.
+* [x] Create a `/predict` endpoint that accepts new game data, processes the description through the local LLM pipeline to extract vibe scores, runs the XGBoost prediction, and returns the result.
+* [x] Create a `/similar` endpoint that filters the loaded dataset to return 3 historical games matching the predicted game's genre, price bracket, and `rating_text`.
 
 #### Phase 5: The React Frontend Dashboard (frontend/)
 
