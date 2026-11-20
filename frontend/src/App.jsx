@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Gamepad2, Database, Sparkles, Activity, ShieldCheck, AlertCircle, ExternalLink, Cpu } from 'lucide-react';
+import { Gamepad2, Database, Sparkles, Activity, ShieldCheck, AlertCircle } from 'lucide-react';
 import PredictionStudio from './components/PredictionStudio';
 import ResultsPane from './components/ResultsPane';
 import DatasetExplorer from './components/DatasetExplorer';
@@ -11,7 +11,7 @@ export default function App() {
   const [predictionResult, setPredictionResult] = useState(null);
   const [loadingPrediction, setLoadingPrediction] = useState(false);
   const [selectedGameForStudio, setSelectedGameForStudio] = useState(null);
-  
+
   // Backend health state
   const [backendStatus, setBackendStatus] = useState('checking'); // 'connected' | 'disconnected' | 'checking'
   const [backendMeta, setBackendMeta] = useState(null);
@@ -45,129 +45,94 @@ export default function App() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Top Navigation Bar */}
+      {/* Surface Tier 3: Glass Header (DESIGN.md 64px, sticky top, backdrop blur) */}
       <header
+        className="glass-header"
         style={{
-          background: 'linear-gradient(180deg, #171d25 0%, #101822 100%)',
-          borderBottom: '1px solid var(--border-subtle)',
-          padding: '0.75rem 2rem',
           position: 'sticky',
           top: 0,
           zIndex: 50,
-          backdropFilter: 'blur(10px)'
+          display: 'flex',
+          alignItems: 'center',
+          padding: '0 2rem'
         }}
       >
-        <div style={{ maxWidth: '1440px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          {/* Logo & Title */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div style={{ maxWidth: '1600px', width: '100%', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {/* Brand & Title */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
             <div
               style={{
                 background: 'linear-gradient(135deg, #1a9fff 0%, #0077cc 100%)',
                 color: '#fff',
-                padding: '8px',
-                borderRadius: '10px',
+                padding: '7px',
+                borderRadius: 'var(--radius-sm)',
                 display: 'flex',
-                boxShadow: '0 0 15px var(--steam-blue-glow)'
+                boxShadow: '0 0 14px var(--primary-glow)'
               }}
             >
-              <Gamepad2 size={24} />
+              <Gamepad2 size={22} />
             </div>
             <div>
-              <h1 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.01em', lineHeight: 1.2 }}>
-                Steam Hit Predictor
-              </h1>
-              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                Hybrid ML (XGBoost 96.3% Acc) + LLM (Fine-Tuned QLoRA Qwen3.5-0.8B)
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--primary)', fontWeight: 700, letterSpacing: '0.05em' }}>
+                  GAMEMETRICS
+                </span>
+                <span style={{ color: 'var(--outline)', fontSize: '0.75rem' }}>//</span>
+                <h1 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#fff', letterSpacing: '-0.01em', lineHeight: 1 }}>
+                  Steam Hit Predictor
+                </h1>
+              </div>
+              <p style={{ fontSize: '0.72rem', color: 'var(--on-surface-variant)', marginTop: '2px' }}>
+                Commercial Viability Intelligence & Market Forecasting for Steam Releases
               </p>
             </div>
           </div>
 
-          {/* Tab Navigation */}
-          <div style={{ display: 'flex', background: 'var(--bg-secondary)', padding: '4px', borderRadius: '10px', border: '1px solid var(--border-subtle)' }}>
+          {/* Segmented Navigation Tabs */}
+          <div className="segmented-nav">
             <button
               onClick={() => setActiveTab('studio')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '8px 16px',
-                borderRadius: '8px',
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                border: 'none',
-                background: activeTab === 'studio' ? 'var(--steam-accent)' : 'transparent',
-                color: activeTab === 'studio' ? '#fff' : 'var(--text-secondary)',
-                boxShadow: activeTab === 'studio' ? '0 2px 8px rgba(0,0,0,0.3)' : 'none',
-                transition: 'all 0.2s ease'
-              }}
+              className={`segmented-tab ${activeTab === 'studio' ? 'active' : ''}`}
             >
-              <Sparkles size={16} style={{ color: activeTab === 'studio' ? 'var(--steam-blue)' : 'inherit' }} />
+              <Sparkles size={15} style={{ color: activeTab === 'studio' ? 'var(--primary)' : 'inherit' }} />
               <span>Developer Studio</span>
             </button>
 
             <button
               onClick={() => setActiveTab('explorer')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '8px 16px',
-                borderRadius: '8px',
-                fontSize: '0.875rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                border: 'none',
-                background: activeTab === 'explorer' ? 'var(--steam-accent)' : 'transparent',
-                color: activeTab === 'explorer' ? '#fff' : 'var(--text-secondary)',
-                boxShadow: activeTab === 'explorer' ? '0 2px 8px rgba(0,0,0,0.3)' : 'none',
-                transition: 'all 0.2s ease'
-              }}
+              className={`segmented-tab ${activeTab === 'explorer' ? 'active' : ''}`}
             >
-              <Database size={16} style={{ color: activeTab === 'explorer' ? 'var(--steam-blue)' : 'inherit' }} />
+              <Database size={15} style={{ color: activeTab === 'explorer' ? 'var(--primary)' : 'inherit' }} />
               <span>Dataset Explorer</span>
             </button>
           </div>
 
-          {/* Backend Status Badge */}
+          {/* Real-time Status Badge */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                padding: '5px 10px',
-                borderRadius: '20px',
-                background: backendStatus === 'connected' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                color: backendStatus === 'connected' ? 'var(--hit-green)' : 'var(--flop-red)',
-                border: `1px solid ${backendStatus === 'connected' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`
-              }}
+            <span
+              className={`badge-pill ${backendStatus === 'connected' ? 'badge-overwhelmingly-positive' : 'badge-negative'}`}
+              style={{ padding: '5px 12px' }}
             >
               <span
+                className="pulsating-dot"
                 style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  backgroundColor: backendStatus === 'connected' ? 'var(--hit-green)' : 'var(--flop-red)',
-                  display: 'inline-block'
+                  backgroundColor: backendStatus === 'connected' ? 'var(--status-positive-bright)' : 'var(--status-negative-bright)'
                 }}
               />
               <span>
                 {backendStatus === 'connected'
-                  ? `FastAPI Online (${backendMeta?.games_in_memory?.toLocaleString() || '27.8k'} Games)`
-                  : 'Backend Offline'}
+                  ? `Engine Online (${backendMeta?.games_in_memory?.toLocaleString() || '27,810'} Releases)`
+                  : 'Engine Offline'}
               </span>
-            </div>
+            </span>
           </div>
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main style={{ flex: 1, maxWidth: '1440px', width: '100%', margin: '0 auto', padding: '1.75rem 2rem' }}>
+      {/* Main Content Area (1600px max width, 12-column grid layout) */}
+      <main style={{ flex: 1, maxWidth: '1600px', width: '100%', margin: '0 auto', padding: '1.75rem 2rem' }}>
         {activeTab === 'studio' ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.15fr) minmax(0, 0.85fr)', gap: '1.75rem', alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.25fr) minmax(0, 0.95fr)', gap: '1.75rem', alignItems: 'start' }}>
             <PredictionStudio
               initialGame={selectedGameForStudio}
               onPredictionComplete={(result) => {
@@ -189,24 +154,23 @@ export default function App() {
       {/* Footer */}
       <footer
         style={{
-          borderTop: '1px solid var(--border-subtle)',
+          borderTop: '1px solid rgba(51, 65, 85, 0.5)',
           padding: '1.25rem 2rem',
-          textAlign: 'center',
-          fontSize: '0.8rem',
-          color: 'var(--text-muted)',
-          background: 'var(--bg-secondary)'
+          fontSize: '0.78rem',
+          color: 'var(--outline)',
+          background: 'var(--surface-container-lowest)'
         }}
       >
-        <div style={{ maxWidth: '1440px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+        <div style={{ maxWidth: '1600px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
           <div>
-            Steam Hit Predictor © 2026 • Trained on 27,810 verified Steam games with ≥50 reviews
+            Steam Hit Predictor • Trained on 27,810 verified Steam games with ≥50 reviews
           </div>
-          <div style={{ display: 'flex', gap: '1.25rem' }}>
-            <span>XGBoost 96.3% Acc</span>
+          <div className="font-mono" style={{ display: 'flex', gap: '1.25rem' }}>
+            <span>27,810 Historical Releases</span>
             <span>•</span>
-            <span>Qwen3.5-0.8B QLoRA</span>
+            <span>194 Market Dimensions</span>
             <span>•</span>
-            <span>194 Engineered Features</span>
+            <span>Autonomous Narrative Sentiment Engine</span>
           </div>
         </div>
       </footer>

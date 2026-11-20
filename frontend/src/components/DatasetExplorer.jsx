@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Database, Trophy, ArrowRight, RefreshCw, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  Search, Filter, Database, ArrowRight, RefreshCw, AlertCircle,
+  ChevronLeft, ChevronRight, X, ExternalLink
+} from 'lucide-react';
 
 const API_BASE = 'http://127.0.0.1:8000';
 
@@ -21,7 +24,6 @@ export default function DatasetExplorer({ onSelectGameForStudio }) {
   const [genresList, setGenresList] = useState([]);
 
   useEffect(() => {
-    // Fetch unique metadata for dropdowns
     fetch(`${API_BASE}/metadata`)
       .then((res) => res.json())
       .then((data) => {
@@ -29,7 +31,7 @@ export default function DatasetExplorer({ onSelectGameForStudio }) {
           setGenresList(data.primary_genres);
         }
       })
-      .catch((err) => console.log('Metadata fetch note:', err));
+      .catch((err) => console.log('Metadata note:', err));
   }, []);
 
   const fetchGames = () => {
@@ -57,7 +59,7 @@ export default function DatasetExplorer({ onSelectGameForStudio }) {
         setLoading(false);
       })
       .catch((err) => {
-        setError(`Could not connect to FastAPI server at ${API_BASE}. Make sure the backend is running.`);
+        setError(`Could not connect to FastAPI server at ${API_BASE}. Ensure backend is running.`);
         setLoading(false);
       });
   };
@@ -78,61 +80,52 @@ export default function DatasetExplorer({ onSelectGameForStudio }) {
     if (r.includes('very positive') || r === 'positive') return 'badge-very-positive';
     if (r.includes('mostly positive')) return 'badge-mostly-positive';
     if (r.includes('mixed')) return 'badge-mixed';
-    return 'badge-mostly-negative';
+    return 'badge-negative';
   };
 
   const totalPages = Math.ceil(totalGames / pageSize);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {/* Search & Filter Header */}
-      <div className="panel-card" style={{ padding: '1.25rem 1.5rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      {/* Search & Filter Header (Surface Tier 1) */}
+      <div className="surface-card" style={{ padding: '1.25rem 1.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{ background: 'rgba(102, 192, 244, 0.15)', padding: '8px', borderRadius: '8px', color: 'var(--steam-blue)' }}>
-              <Database size={22} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ background: 'rgba(102, 192, 244, 0.15)', padding: '8px', borderRadius: 'var(--radius-sm)', color: 'var(--primary)' }}>
+              <Database size={20} />
             </div>
             <div>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff' }}>Dataset Explorer</h2>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                Exploring {totalGames.toLocaleString()} verified Steam games across stratified train, valid, and test splits
+              <p style={{ fontSize: '0.825rem', color: 'var(--on-surface-variant)' }}>
+                Exploring <span className="font-mono" style={{ color: '#fff', fontWeight: 600 }}>{totalGames.toLocaleString()}</span> verified Steam releases across stratified splits
               </p>
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {/* Quick Segmented Filter */}
+          <div className="segmented-nav">
             <button
               onClick={() => { setHitFilter(''); setPage(0); }}
-              style={{
-                padding: '6px 14px', borderRadius: '6px', fontSize: '0.85rem', cursor: 'pointer', fontWeight: 600,
-                background: hitFilter === '' ? 'var(--steam-blue)' : 'var(--bg-secondary)',
-                color: hitFilter === '' ? '#0a0e17' : 'var(--text-secondary)',
-                border: '1px solid var(--border-subtle)'
-              }}
+              className={`segmented-tab ${hitFilter === '' ? 'active' : ''}`}
+              style={{ fontSize: '0.8rem', padding: '5px 12px' }}
             >
-              All ({totalGames.toLocaleString()})
+              All Releases
             </button>
             <button
               onClick={() => { setHitFilter('1'); setPage(0); }}
-              style={{
-                padding: '6px 14px', borderRadius: '6px', fontSize: '0.85rem', cursor: 'pointer', fontWeight: 600,
-                background: hitFilter === '1' ? 'rgba(16, 185, 129, 0.25)' : 'var(--bg-secondary)',
-                color: hitFilter === '1' ? 'var(--hit-green)' : 'var(--text-secondary)',
-                border: `1px solid ${hitFilter === '1' ? 'var(--hit-green)' : 'var(--border-subtle)'}`
-              }}
+              className={`segmented-tab ${hitFilter === '1' ? 'active' : ''}`}
+              style={{ fontSize: '0.8rem', padding: '5px 12px' }}
             >
-              ★ Hits (≥80% Approval)
+              <span className="pulsating-dot" style={{ backgroundColor: 'var(--status-positive-bright)', width: '5px', height: '5px' }} />
+              Hits (≥80%)
             </button>
             <button
               onClick={() => { setHitFilter('0'); setPage(0); }}
-              style={{
-                padding: '6px 14px', borderRadius: '6px', fontSize: '0.85rem', cursor: 'pointer', fontWeight: 600,
-                background: hitFilter === '0' ? 'rgba(239, 68, 68, 0.25)' : 'var(--bg-secondary)',
-                color: hitFilter === '0' ? 'var(--flop-red)' : 'var(--text-secondary)',
-                border: `1px solid ${hitFilter === '0' ? 'var(--flop-red)' : 'var(--border-subtle)'}`
-              }}
+              className={`segmented-tab ${hitFilter === '0' ? 'active' : ''}`}
+              style={{ fontSize: '0.8rem', padding: '5px 12px' }}
             >
-              Flops (&lt;80% Approval)
+              <span className="pulsating-dot" style={{ backgroundColor: 'var(--status-negative-bright)', width: '5px', height: '5px' }} />
+              Flops (&lt;80%)
             </button>
           </div>
         </div>
@@ -140,13 +133,13 @@ export default function DatasetExplorer({ onSelectGameForStudio }) {
         {/* Form controls */}
         <form onSubmit={handleSearchSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
           <div style={{ position: 'relative' }}>
-            <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
+            <Search size={15} style={{ position: 'absolute', left: '12px', top: '11px', color: 'var(--outline)' }} />
             <input
               type="text"
-              placeholder="Search by title, dev, pub..."
+              placeholder="Search title, developer, publisher..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ paddingLeft: '36px' }}
+              style={{ paddingLeft: '34px' }}
             />
           </div>
 
@@ -158,7 +151,7 @@ export default function DatasetExplorer({ onSelectGameForStudio }) {
           </select>
 
           <select value={selectedRating} onChange={(e) => { setSelectedRating(e.target.value); setPage(0); }}>
-            <option value="">All Rating Tiers</option>
+            <option value="">All Community Tiers</option>
             <option value="Overwhelmingly Positive">Overwhelmingly Positive (95%+)</option>
             <option value="Very Positive">Very Positive (80-94%)</option>
             <option value="Positive">Positive</option>
@@ -168,89 +161,89 @@ export default function DatasetExplorer({ onSelectGameForStudio }) {
             <option value="Overwhelmingly Negative">Overwhelmingly Negative (&lt;20%)</option>
           </select>
 
-          <button
-            type="submit"
-            style={{
-              background: 'linear-gradient(135deg, #1a9fff 0%, #0077cc 100%)',
-              color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600,
-              padding: '10px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px'
-            }}
-          >
-            <Search size={16} /> Filter
+          <button type="submit" className="btn-primary" style={{ height: '38px', padding: '0 16px' }}>
+            <Search size={15} /> Filter
           </button>
         </form>
       </div>
 
       {/* Error state */}
       {error && (
-        <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid var(--flop-red)', padding: '1rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#fca5a5' }}>
-          <AlertCircle size={20} />
-          <span>{error}</span>
-          <button onClick={fetchGames} style={{ marginLeft: 'auto', background: 'transparent', border: '1px solid #fca5a5', color: '#fff', padding: '4px 10px', borderRadius: '4px', cursor: 'pointer' }}>Retry</button>
+        <div style={{ background: 'var(--status-negative-bg)', border: '1px solid var(--status-negative-border)', padding: '1rem', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#ffb4ab' }}>
+          <AlertCircle size={18} />
+          <span style={{ fontSize: '0.85rem' }}>{error}</span>
+          <button onClick={fetchGames} className="btn-secondary" style={{ marginLeft: 'auto', padding: '4px 10px', fontSize: '0.75rem' }}>
+            Retry
+          </button>
         </div>
       )}
 
       {/* Loading state */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: '4rem 1rem' }}>
-          <RefreshCw className="animate-spin" size={32} style={{ color: 'var(--steam-blue)', margin: '0 auto 1rem' }} />
-          <p style={{ color: 'var(--text-secondary)' }}>Loading games from cleaned dataset...</p>
+          <RefreshCw className="animate-spin" size={30} style={{ color: 'var(--primary)', margin: '0 auto 1rem' }} />
+          <p style={{ color: 'var(--on-surface-variant)', fontSize: '0.9rem' }}>Loading releases from dataset archive...</p>
         </div>
       ) : (
         <>
           {/* Games Grid */}
           <div className="grid-cards">
             {games.map((g) => (
-              <div key={g.appid} className="panel-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div
+                key={g.appid}
+                className="surface-card surface-card-hover"
+                style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
+              >
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                    <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#fff', lineHeight: 1.3 }}>
-                      {g.name}
-                    </h3>
+                    <div>
+                      <span className="font-mono" style={{ fontSize: '0.68rem', color: 'var(--outline)', display: 'block', marginBottom: '2px' }}>
+                        APPID: {g.appid}
+                      </span>
+                      <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#fff', lineHeight: 1.3 }}>
+                        {g.name}
+                      </h3>
+                    </div>
                     <span
-                      style={{
-                        fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '4px', whiteSpace: 'nowrap',
-                        background: g.is_hit === 1 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
-                        color: g.is_hit === 1 ? 'var(--hit-green)' : 'var(--flop-red)',
-                        border: `1px solid ${g.is_hit === 1 ? 'var(--hit-green)' : 'var(--flop-red)'}`
-                      }}
+                      className={`badge-pill ${g.is_hit === 1 ? 'badge-overwhelmingly-positive' : 'badge-negative'}`}
+                      style={{ fontSize: '0.68rem', padding: '2px 8px' }}
                     >
                       {g.is_hit === 1 ? 'HIT' : 'FLOP'}
                     </span>
                   </div>
 
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
-                    by <span style={{ color: 'var(--text-secondary)' }}>{g.developer}</span> • {g.primary_genre}
+                  <p style={{ fontSize: '0.78rem', color: 'var(--outline)', marginBottom: '0.75rem' }}>
+                    by <span style={{ color: 'var(--on-surface-variant)' }}>{g.developer}</span> • {g.primary_genre}
                   </p>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
-                    <span className={getRatingBadgeClass(g.rating_text)} style={{ fontSize: '0.75rem', fontWeight: 600, padding: '2px 8px', borderRadius: '4px' }}>
+                    <span className={`badge-pill ${getRatingBadgeClass(g.rating_text)}`} style={{ padding: '2px 8px' }}>
                       {g.rating_text}
                     </span>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    <span className="font-mono" style={{ fontSize: '0.78rem', color: 'var(--on-surface-variant)' }}>
                       {(g.approval_rate * 100).toFixed(1)}% ({g.total_reviews.toLocaleString()} revs)
                     </span>
-                    <span style={{ marginLeft: 'auto', fontSize: '0.9rem', fontWeight: 700, color: g.price === 0 ? 'var(--hit-green)' : '#fff' }}>
+                    <span className="font-mono" style={{ marginLeft: 'auto', fontSize: '0.85rem', fontWeight: 700, color: g.price === 0 ? 'var(--status-positive-bright)' : '#fff' }}>
                       {g.price === 0 ? 'FREE' : `$${g.price.toFixed(2)}`}
                     </span>
                   </div>
 
                   {g.short_description && (
-                    <p style={{ fontSize: '0.825rem', color: 'var(--text-secondary)', lineHeight: 1.4, marginBottom: '1rem', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--on-surface-variant)', lineHeight: 1.4, marginBottom: '1rem', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                       {g.short_description}
                     </p>
                   )}
 
-                  {/* Vibe Score Bars */}
-                  <div style={{ background: 'rgba(10, 14, 23, 0.6)', padding: '8px 10px', borderRadius: '6px', marginBottom: '1rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
-                      <span>Vibe Signals:</span>
-                      <span>Hype {g.hype_score.toFixed(1)} • Story {g.story_score.toFixed(1)} • Retro {g.nostalgia_score.toFixed(1)}</span>
+                  {/* Vibe Score Signals */}
+                  <div style={{ background: 'var(--surface-container-lowest)', padding: '7px 10px', borderRadius: 'var(--radius-sm)', marginBottom: '1rem', border: '1px solid rgba(51, 65, 85, 0.4)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--outline)', marginBottom: '4px' }}>
+                      <span>Narrative Signals:</span>
+                      <span className="font-mono">H {g.hype_score.toFixed(1)} • S {g.story_score.toFixed(1)} • N {g.nostalgia_score.toFixed(1)}</span>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px', height: '4px' }}>
-                      <div style={{ background: 'var(--steam-blue)', borderRadius: '2px', width: `${(g.hype_score / 10) * 100}%` }} title={`Hype: ${g.hype_score}`} />
-                      <div style={{ background: '#a855f7', borderRadius: '2px', width: `${(g.story_score / 10) * 100}%` }} title={`Story: ${g.story_score}`} />
-                      <div style={{ background: '#f59e0b', borderRadius: '2px', width: `${(g.nostalgia_score / 10) * 100}%` }} title={`Nostalgia: ${g.nostalgia_score}`} />
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px', height: '3px' }}>
+                      <div style={{ background: 'var(--primary)', borderRadius: '1px', width: `${(g.hype_score / 10) * 100}%` }} title={`Hype: ${g.hype_score}`} />
+                      <div style={{ background: '#a855f7', borderRadius: '1px', width: `${(g.story_score / 10) * 100}%` }} title={`Story: ${g.story_score}`} />
+                      <div style={{ background: '#f59e0b', borderRadius: '1px', width: `${(g.nostalgia_score / 10) * 100}%` }} title={`Nostalgia: ${g.nostalgia_score}`} />
                     </div>
                   </div>
                 </div>
@@ -258,16 +251,11 @@ export default function DatasetExplorer({ onSelectGameForStudio }) {
                 {onSelectGameForStudio && (
                   <button
                     onClick={() => onSelectGameForStudio(g)}
-                    style={{
-                      background: 'rgba(102, 192, 244, 0.1)', color: 'var(--steam-blue)',
-                      border: '1px solid rgba(102, 192, 244, 0.3)', borderRadius: '6px',
-                      padding: '8px 12px', fontSize: '0.825rem', fontWeight: 600,
-                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                      transition: 'all 0.2s ease'
-                    }}
+                    className="btn-secondary"
+                    style={{ width: '100%', fontSize: '0.8rem', padding: '7px 10px' }}
                   >
-                    <span>Use in Developer Studio</span>
-                    <ArrowRight size={14} />
+                    <span>Load into Developer Studio</span>
+                    <ArrowRight size={13} />
                   </button>
                 )}
               </div>
@@ -276,34 +264,26 @@ export default function DatasetExplorer({ onSelectGameForStudio }) {
 
           {/* Pagination Footer */}
           {totalPages > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', padding: '1rem', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-subtle)' }}>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                Page <span style={{ color: '#fff', fontWeight: 600 }}>{page + 1}</span> of <span style={{ color: '#fff', fontWeight: 600 }}>{totalPages}</span> ({totalGames.toLocaleString()} games)
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', padding: '0.85rem 1.25rem', background: 'var(--surface-container-low)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--outline-variant)' }}>
+              <p className="font-mono" style={{ fontSize: '0.8rem', color: 'var(--on-surface-variant)' }}>
+                Page <span style={{ color: '#fff', fontWeight: 600 }}>{page + 1}</span> of <span style={{ color: '#fff', fontWeight: 600 }}>{totalPages}</span> ({totalGames.toLocaleString()} releases)
               </p>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button
                   disabled={page === 0}
                   onClick={() => setPage(p => Math.max(0, p - 1))}
-                  style={{
-                    padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--border-subtle)',
-                    background: page === 0 ? 'transparent' : 'var(--bg-card)',
-                    color: page === 0 ? 'var(--text-muted)' : '#fff', cursor: page === 0 ? 'not-allowed' : 'pointer',
-                    display: 'flex', alignItems: 'center', gap: '4px'
-                  }}
+                  className="btn-secondary"
+                  style={{ opacity: page === 0 ? 0.4 : 1, cursor: page === 0 ? 'not-allowed' : 'pointer', padding: '5px 10px', fontSize: '0.78rem' }}
                 >
-                  <ChevronLeft size={16} /> Previous
+                  <ChevronLeft size={14} /> Previous
                 </button>
                 <button
                   disabled={page >= totalPages - 1}
                   onClick={() => setPage(p => p + 1)}
-                  style={{
-                    padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--border-subtle)',
-                    background: page >= totalPages - 1 ? 'transparent' : 'var(--bg-card)',
-                    color: page >= totalPages - 1 ? 'var(--text-muted)' : '#fff', cursor: page >= totalPages - 1 ? 'not-allowed' : 'pointer',
-                    display: 'flex', alignItems: 'center', gap: '4px'
-                  }}
+                  className="btn-secondary"
+                  style={{ opacity: page >= totalPages - 1 ? 0.4 : 1, cursor: page >= totalPages - 1 ? 'not-allowed' : 'pointer', padding: '5px 10px', fontSize: '0.78rem' }}
                 >
-                  Next <ChevronRight size={16} />
+                  Next <ChevronRight size={14} />
                 </button>
               </div>
             </div>

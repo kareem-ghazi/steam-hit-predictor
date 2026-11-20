@@ -1,21 +1,47 @@
 import React, { useState, useEffect } from 'react';
-import { Play, Sparkles, Sliders, RotateCcw, AlertCircle, HelpCircle, Layers } from 'lucide-react';
+import {
+  Sparkles, Sliders, Play, RotateCcw, AlertCircle, Check, Plus, X,
+  Layers, Gamepad2, Monitor, Apple, Terminal, DollarSign, Tag, Info
+} from 'lucide-react';
 
 const API_BASE = 'http://127.0.0.1:8000';
 
+// Curated standard Steam genres
+const AVAILABLE_GENRES = [
+  'Action', 'Adventure', 'RPG', 'Strategy', 'Simulation', 'Indie',
+  'Casual', 'Massively Multiplayer', 'Racing', 'Sports', 'Early Access'
+];
+
+// Curated standard Steam categories
+const AVAILABLE_CATEGORIES = [
+  'Single-player', 'Multi-player', 'Online PvP', 'Co-op', 'Online Co-op',
+  'Steam Achievements', 'Full controller support', 'Steam Cloud',
+  'Steam Trading Cards', 'Steam Workshop', 'Cross-Platform Multiplayer',
+  'In-App Purchases', 'Remote Play Together'
+];
+
+// Curated popular Steam tags
+const POPULAR_TAGS = [
+  'Roguelike', 'Souls-like', 'Metroidvania', 'Deckbuilder', 'Open World',
+  'Crafting', 'Survival', 'Horror', 'Atmospheric', '2D', 'Pixel Art',
+  'FPS', 'Boomer Shooter', 'Story Rich', 'Cozy', 'Difficult', 'Turn-Based',
+  'Sci-fi', 'Fantasy', 'Cyberpunk', 'Space', 'Puzzle'
+];
+
+// Benchmark Game Presets
 const PRESETS = [
   {
-    name: 'Metroidvania Masterpiece (Hit Preset)',
+    name: 'Metroidvania Masterpiece (Hit Archetype)',
     data: {
       name: 'Crypt of the Hollow Sovereign',
       description: 'An atmospheric hand-drawn 2D metroidvania through a ruined insect kingdom. Uncover deep forgotten lore, master fluid acrobatic combat, and challenge over 40 epic bosses in a haunting interconnected world with an orchestral soundtrack.',
       developer: 'Team Moonstone',
       publisher: 'Team Moonstone',
       primary_genre: 'Action',
-      genres: 'Action;Indie;Adventure',
-      categories: 'Single-player;Steam Achievements;Full controller support;Steam Cloud',
-      steamspy_tags: 'Metroidvania;Souls-like;Difficult;Atmospheric;2D;Indie;Action',
-      platforms: 'windows;mac;linux',
+      genres: ['Action', 'Indie', 'Adventure'],
+      categories: ['Single-player', 'Steam Achievements', 'Full controller support', 'Steam Cloud'],
+      steamspy_tags: ['Metroidvania', 'Souls-like', 'Difficult', 'Atmospheric', '2D', 'Indie'],
+      platforms: ['windows', 'mac', 'linux'],
       price: 19.99,
       english: 1,
       required_age: 0,
@@ -27,17 +53,17 @@ const PRESETS = [
     }
   },
   {
-    name: 'Retro Boomer Shooter (Hit Preset)',
+    name: 'Retro 90s Boomer Shooter (Hit Archetype)',
     data: {
       name: 'Duskfall: Bloodline 1996',
       description: 'Fast-paced retro 90s FPS boomer shooter with pixelated bloody action, strafe jumping, dual-wield shotguns, industrial metal soundtrack, and labyrinthine level design reminiscent of Quake and Doom.',
       developer: 'Iron Pixel Studios',
       publisher: 'New Blood Interactive',
       primary_genre: 'Action',
-      genres: 'Action;Indie',
-      categories: 'Single-player;Steam Achievements;Steam Cloud',
-      steamspy_tags: 'Boomer Shooter;Retro;FPS;Fast-Paced;Gore;Action;90s',
-      platforms: 'windows;linux',
+      genres: ['Action', 'Indie'],
+      categories: ['Single-player', 'Steam Achievements', 'Steam Cloud'],
+      steamspy_tags: ['Boomer Shooter', 'FPS', 'Pixel Art', 'Atmospheric', 'Fast-Paced', 'Action'],
+      platforms: ['windows', 'linux'],
       price: 14.99,
       english: 1,
       required_age: 18,
@@ -49,39 +75,17 @@ const PRESETS = [
     }
   },
   {
-    name: 'Generic Zombie Survival (Flop Preset)',
-    data: {
-      name: 'Dead Survival Zombie Island Online',
-      description: 'Survive in an open world island filled with walking dead zombies. Collect wood and stone, build a base, find loot, and shoot zombies. Early access survival game with unity assets.',
-      developer: 'Asset Flip Games',
-      publisher: 'Asset Flip Games',
-      primary_genre: 'Action',
-      genres: 'Action;Adventure;Massively Multiplayer',
-      categories: 'Multi-player;PvP',
-      steamspy_tags: 'Zombies;Survival;Open World;Early Access;Shooter;Multiplayer',
-      platforms: 'windows',
-      price: 29.99,
-      english: 1,
-      required_age: 0,
-      achievements: 0,
-      use_manual_vibes: false,
-      hype_score: 2.1,
-      story_score: 1.5,
-      nostalgia_score: 1.0
-    }
-  },
-  {
-    name: 'Story-Rich Cozy Farming Sim (Hit Preset)',
+    name: 'Story-Rich Cozy Farming Sim (Hit Archetype)',
     data: {
       name: 'Starlight Orchard Valley',
       description: 'A cozy heartwarming narrative farming simulator. Inherit your grandmothers quaint countryside cottage, befriend quirky village townsfolk, uncover ancient forest spirits, and build your dream orchard.',
       developer: 'Breeze Studio',
       publisher: 'Chucklefish',
       primary_genre: 'Simulation',
-      genres: 'Simulation;RPG;Casual;Indie',
-      categories: 'Single-player;Steam Achievements;Controller support',
-      steamspy_tags: 'Cozy;Farming Sim;Relaxing;Cute;Story Rich;Life Sim;RPG',
-      platforms: 'windows;mac',
+      genres: ['Simulation', 'RPG', 'Casual', 'Indie'],
+      categories: ['Single-player', 'Steam Achievements', 'Full controller support'],
+      steamspy_tags: ['Cozy', 'Story Rich', 'Atmospheric', 'Crafting', '2D', 'Casual'],
+      platforms: ['windows', 'mac'],
       price: 14.99,
       english: 1,
       required_age: 0,
@@ -91,20 +95,42 @@ const PRESETS = [
       story_score: 8.8,
       nostalgia_score: 8.2
     }
+  },
+  {
+    name: 'Generic Zombie Survival (Flop Archetype)',
+    data: {
+      name: 'Dead Survival Zombie Island Online',
+      description: 'Survive in an open world island filled with walking dead zombies. Collect wood and stone, build a base, find loot, and shoot zombies. Early access survival game with unity assets.',
+      developer: 'Asset Flip Games',
+      publisher: 'Asset Flip Games',
+      primary_genre: 'Action',
+      genres: ['Action', 'Adventure', 'Massively Multiplayer'],
+      categories: ['Multi-player', 'Online PvP'],
+      steamspy_tags: ['Survival', 'Open World', 'Crafting', 'FPS', 'Action'],
+      platforms: ['windows'],
+      price: 29.99,
+      english: 1,
+      required_age: 0,
+      achievements: 0,
+      use_manual_vibes: false,
+      hype_score: 2.1,
+      story_score: 1.5,
+      nostalgia_score: 1.0
+    }
   }
 ];
 
 export default function PredictionStudio({ initialGame, onPredictionComplete }) {
   const [formData, setFormData] = useState({
     name: 'Chronicles of Eldoria',
-    description: 'An epic dark-fantasy roguelike deckbuilder with branching narrative choices, procedural dungeons, atmospheric pixel art, and deeply tactical turn-based card combat.',
+    description: 'An atmospheric dark-fantasy roguelike deckbuilder featuring deep branching narrative choices, procedural dungeons, hand-crafted pixel art, and deeply tactical turn-based card combat.',
     developer: 'Mythic Forge Studios',
     publisher: 'Indie Publisher Co.',
     primary_genre: 'RPG',
-    genres: 'RPG;Strategy;Indie',
-    categories: 'Single-player;Steam Achievements;Steam Cloud',
-    steamspy_tags: 'Roguelike Deckbuilder;Card Battler;Dark Fantasy;Turn-Based;Pixel Art',
-    platforms: 'windows;mac',
+    genres: ['RPG', 'Strategy', 'Indie'],
+    categories: ['Single-player', 'Steam Achievements', 'Steam Cloud'],
+    steamspy_tags: ['Roguelike', 'Deckbuilder', 'Dark Fantasy', 'Turn-Based', 'Pixel Art'],
+    platforms: ['windows', 'mac'],
     price: 19.99,
     english: 1,
     required_age: 0,
@@ -115,33 +141,41 @@ export default function PredictionStudio({ initialGame, onPredictionComplete }) 
     nostalgia_score: 6.5
   });
 
+  const [customTagInput, setCustomTagInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [genresList, setGenresList] = useState([]);
 
-  // Load metadata for genre options
-  useEffect(() => {
-    fetch(`${API_BASE}/metadata`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.primary_genres) setGenresList(data.primary_genres);
-      })
-      .catch((err) => console.log('Metadata load note:', err));
-  }, []);
-
-  // Sync if initialGame is passed from DatasetExplorer
+  // Sync if initialGame is sent from DatasetExplorer
   useEffect(() => {
     if (initialGame) {
+      const parsedGenres = (initialGame.genres || '')
+        .split(';')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const parsedCats = (initialGame.categories || '')
+        .split(';')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const parsedTags = (initialGame.steamspy_tags || '')
+        .split(';')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const parsedPlats = (initialGame.platforms || 'windows')
+        .split(';')
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean);
+
       setFormData((prev) => ({
         ...prev,
         name: initialGame.name || prev.name,
         description: initialGame.short_description || prev.description,
         developer: initialGame.developer || prev.developer,
         publisher: initialGame.publisher || prev.publisher,
-        primary_genre: initialGame.primary_genre || prev.primary_genre,
-        genres: initialGame.genres || prev.genres,
-        categories: initialGame.categories || prev.categories,
-        steamspy_tags: initialGame.steamspy_tags || prev.steamspy_tags,
+        primary_genre: initialGame.primary_genre || parsedGenres[0] || prev.primary_genre,
+        genres: parsedGenres.length > 0 ? parsedGenres : prev.genres,
+        categories: parsedCats.length > 0 ? parsedCats : prev.categories,
+        steamspy_tags: parsedTags.length > 0 ? parsedTags : prev.steamspy_tags,
+        platforms: parsedPlats.length > 0 ? parsedPlats : prev.platforms,
         price: initialGame.price !== undefined ? initialGame.price : prev.price,
         achievements: initialGame.achievements || prev.achievements,
         use_manual_vibes: true,
@@ -152,7 +186,7 @@ export default function PredictionStudio({ initialGame, onPredictionComplete }) 
     }
   }, [initialGame]);
 
-  const handleChange = (e) => {
+  const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -160,15 +194,67 @@ export default function PredictionStudio({ initialGame, onPredictionComplete }) 
     }));
   };
 
-  const handlePlatformToggle = (platform) => {
-    const platforms = formData.platforms.split(';').filter(Boolean);
-    const exists = platforms.includes(platform);
-    const updated = exists ? platforms.filter((p) => p !== platform) : [...platforms, platform];
-    setFormData((prev) => ({ ...prev, platforms: updated.join(';') || 'windows' }));
+  const toggleGenre = (genre) => {
+    setFormData((prev) => {
+      const exists = prev.genres.includes(genre);
+      const updated = exists ? prev.genres.filter((g) => g !== genre) : [...prev.genres, genre];
+      // Ensure primary genre stays valid
+      let newPrimary = prev.primary_genre;
+      if (!updated.includes(newPrimary)) {
+        newPrimary = updated[0] || 'Indie';
+      }
+      return { ...prev, genres: updated, primary_genre: newPrimary };
+    });
   };
 
-  const handlePriceQuickSet = (priceVal) => {
-    setFormData((prev) => ({ ...prev, price: priceVal }));
+  const toggleCategory = (category) => {
+    setFormData((prev) => {
+      const exists = prev.categories.includes(category);
+      const updated = exists ? prev.categories.filter((c) => c !== category) : [...prev.categories, category];
+      return { ...prev, categories: updated };
+    });
+  };
+
+  const toggleTag = (tag) => {
+    setFormData((prev) => {
+      const exists = prev.steamspy_tags.includes(tag);
+      const updated = exists ? prev.steamspy_tags.filter((t) => t !== tag) : [...prev.steamspy_tags, tag];
+      return { ...prev, steamspy_tags: updated };
+    });
+  };
+
+  const handleAddCustomTag = (e) => {
+    if (e.key === 'Enter' || e.type === 'click') {
+      e.preventDefault();
+      const tag = customTagInput.trim();
+      if (tag && !formData.steamspy_tags.includes(tag)) {
+        setFormData((prev) => ({
+          ...prev,
+          steamspy_tags: [...prev.steamspy_tags, tag]
+        }));
+        setCustomTagInput('');
+      }
+    }
+  };
+
+  const removeTag = (tagToRemove) => {
+    setFormData((prev) => ({
+      ...prev,
+      steamspy_tags: prev.steamspy_tags.filter((t) => t !== tagToRemove)
+    }));
+  };
+
+  const togglePlatform = (plat) => {
+    setFormData((prev) => {
+      const exists = prev.platforms.includes(plat);
+      if (exists && prev.platforms.length === 1) return prev; // Keep at least one platform
+      const updated = exists ? prev.platforms.filter((p) => p !== plat) : [...prev.platforms, plat];
+      return { ...prev, platforms: updated };
+    });
+  };
+
+  const handlePriceSet = (p) => {
+    setFormData((prev) => ({ ...prev, price: p }));
   };
 
   const handleLoadPreset = (preset) => {
@@ -187,19 +273,21 @@ export default function PredictionStudio({ initialGame, onPredictionComplete }) 
         developer: formData.developer.trim() || 'Independent Studio',
         publisher: formData.publisher.trim() || 'Independent Studio',
         primary_genre: formData.primary_genre,
-        genres: formData.genres.trim(),
-        categories: formData.categories.trim(),
-        steamspy_tags: formData.steamspy_tags.trim(),
-        platforms: formData.platforms,
+        genres: formData.genres.join(';'),
+        categories: formData.categories.join(';'),
+        steamspy_tags: formData.steamspy_tags.join(';'),
+        platforms: formData.platforms.join(';'),
         price: parseFloat(formData.price) || 0.0,
         english: parseInt(formData.english, 10),
         required_age: parseInt(formData.required_age, 10) || 0,
         achievements: parseInt(formData.achievements, 10) || 0,
-        vibe_scores: formData.use_manual_vibes ? {
-          hype_score: parseFloat(formData.hype_score),
-          story_score: parseFloat(formData.story_score),
-          nostalgia_score: parseFloat(formData.nostalgia_score)
-        } : null
+        vibe_scores: formData.use_manual_vibes
+          ? {
+              hype_score: parseFloat(formData.hype_score),
+              story_score: parseFloat(formData.story_score),
+              nostalgia_score: parseFloat(formData.nostalgia_score)
+            }
+          : null
       };
 
       const res = await fetch(`${API_BASE}/predict`, {
@@ -210,44 +298,50 @@ export default function PredictionStudio({ initialGame, onPredictionComplete }) 
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Prediction failed with HTTP ${res.status}`);
+        throw new Error(errorData.detail || `Prediction failed with status ${res.status}`);
       }
 
       const predictionData = await res.json();
       onPredictionComplete(predictionData);
     } catch (err) {
-      setError(err.message || 'Failed to communicate with prediction backend');
+      setError(err.message || 'Could not communicate with prediction service.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="panel-card" style={{ padding: '1.75rem' }}>
-      {/* Header with Preset Selector */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+    <div className="surface-card" style={{ padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      {/* Studio Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Layers size={22} style={{ color: 'var(--steam-blue)' }} />
-            Developer Studio
-          </h2>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-            Configure game attributes & evaluate market hit potential using XGBoost + QLoRA LLM
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+            <div style={{ background: 'rgba(102, 192, 244, 0.15)', color: 'var(--primary)', padding: '6px', borderRadius: 'var(--radius-sm)' }}>
+              <Gamepad2 size={20} />
+            </div>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff', letterSpacing: '-0.01em' }}>
+              Developer Studio
+            </h2>
+          </div>
+          <p style={{ fontSize: '0.85rem', color: 'var(--on-surface-variant)' }}>
+            Configure game attributes & evaluate Steam commercial viability
           </p>
         </div>
 
-        {/* Preset quick buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Quick Presets:</span>
+        {/* Archetype Quick Select */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '0.78rem', color: 'var(--outline)', fontWeight: 500 }}>
+            Archetypes:
+          </span>
           <select
             onChange={(e) => {
               const idx = parseInt(e.target.value, 10);
               if (!isNaN(idx)) handleLoadPreset(PRESETS[idx]);
             }}
             defaultValue=""
-            style={{ width: 'auto', padding: '6px 10px', fontSize: '0.8rem' }}
+            style={{ width: 'auto', padding: '6px 12px', fontSize: '0.8rem' }}
           >
-            <option value="" disabled>Load Archetype...</option>
+            <option value="" disabled>Load Preset...</option>
             {PRESETS.map((p, idx) => (
               <option key={p.name} value={idx}>{p.name}</option>
             ))}
@@ -256,187 +350,297 @@ export default function PredictionStudio({ initialGame, onPredictionComplete }) 
       </div>
 
       {error && (
-        <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid var(--flop-red)', padding: '0.85rem 1rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#fca5a5', marginBottom: '1.25rem' }}>
-          <AlertCircle size={18} />
+        <div style={{ background: 'var(--status-negative-bg)', border: '1px solid var(--status-negative-border)', padding: '10px 14px', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', gap: '8px', color: '#ffb4ab' }}>
+          <AlertCircle size={16} />
           <span style={{ fontSize: '0.85rem' }}>{error}</span>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-        {/* Game Title & Genre */}
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        {/* Section 1: Title & Pitch Description */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
+            <div>
+              <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--on-surface-variant)', display: 'block', marginBottom: '6px' }}>
+                Game Title *
+              </label>
+              <input
+                type="text"
+                name="name"
+                required
+                value={formData.name}
+                onChange={handleInputChange}
+                placeholder="e.g. Hollow Knight, Hades, Balatro"
+              />
+            </div>
+
+            <div>
+              <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--on-surface-variant)', display: 'block', marginBottom: '6px' }}>
+                Primary Genre *
+              </label>
+              <select name="primary_genre" value={formData.primary_genre} onChange={handleInputChange}>
+                {formData.genres.map((g) => (
+                  <option key={g} value={g}>{g}</option>
+                ))}
+                {AVAILABLE_GENRES.filter((g) => !formData.genres.includes(g)).map((g) => (
+                  <option key={g} value={g}>{g}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           <div>
-            <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
-              Game Title *
-            </label>
-            <input
-              type="text"
-              name="name"
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--on-surface-variant)' }}>
+                Steam Store Pitch / Description *
+              </label>
+              <span className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--primary)', letterSpacing: '0.02em' }}>
+                Evaluated by Narrative Sentiment Engine
+              </span>
+            </div>
+            <textarea
+              name="description"
+              rows="3"
               required
-              value={formData.name}
-              onChange={handleChange}
-              placeholder="e.g. Hades, Terraria, Lethal Company"
+              value={formData.description}
+              onChange={handleInputChange}
+              placeholder="Describe gameplay mechanics, world setting, visual aesthetic, and mood..."
             />
           </div>
+        </div>
 
-          <div>
-            <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
-              Primary Genre
+        {/* Section 2: Interactive Genre Selection Chips */}
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--on-surface-variant)' }}>
+              Select Genres ({formData.genres.length} active)
             </label>
-            <select name="primary_genre" value={formData.primary_genre} onChange={handleChange}>
-              {genresList.length > 0 ? (
-                genresList.map((g) => <option key={g} value={g}>{g}</option>)
-              ) : (
-                <>
-                  <option value="Action">Action</option>
-                  <option value="Adventure">Adventure</option>
-                  <option value="RPG">RPG</option>
-                  <option value="Strategy">Strategy</option>
-                  <option value="Simulation">Simulation</option>
-                  <option value="Indie">Indie</option>
-                  <option value="Casual">Casual</option>
-                </>
-              )}
-            </select>
+            <span style={{ fontSize: '0.75rem', color: 'var(--outline)' }}>
+              Click to toggle • Primary: <strong style={{ color: 'var(--primary)' }}>{formData.primary_genre}</strong>
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {AVAILABLE_GENRES.map((g) => {
+              const active = formData.genres.includes(g);
+              const isPrimary = formData.primary_genre === g;
+              return (
+                <button
+                  type="button"
+                  key={g}
+                  onClick={() => toggleGenre(g)}
+                  className={`tag-chip ${active ? 'active' : ''}`}
+                >
+                  {active && <Check size={12} style={{ color: 'var(--primary)' }} />}
+                  <span>{g}</span>
+                  {isPrimary && (
+                    <span style={{ fontSize: '0.65rem', background: 'var(--primary)', color: '#0b1326', padding: '1px 5px', borderRadius: '2px', fontWeight: 700 }}>
+                      PRIMARY
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Short Description */}
+        {/* Section 3: Interactive Categories Selection Chips */}
         <div>
-          <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-            <span>Steam Store Pitch / Description *</span>
-            <span style={{ color: 'var(--steam-blue)', fontSize: '0.75rem' }}>Processed by QLoRA LLM</span>
-          </label>
-          <textarea
-            name="description"
-            rows="3"
-            required
-            value={formData.description}
-            onChange={handleChange}
-            placeholder="Describe gameplay mechanics, world setting, visual aesthetic, and mood..."
-          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--on-surface-variant)' }}>
+              Game Modes & Steam Features ({formData.categories.length} active)
+            </label>
+            <span style={{ fontSize: '0.75rem', color: 'var(--outline)' }}>
+              Select all features planned for launch
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+            {AVAILABLE_CATEGORIES.map((c) => {
+              const active = formData.categories.includes(c);
+              return (
+                <button
+                  type="button"
+                  key={c}
+                  onClick={() => toggleCategory(c)}
+                  className={`tag-chip ${active ? 'active' : ''}`}
+                >
+                  {active && <Check size={12} style={{ color: 'var(--primary)' }} />}
+                  <span>{c}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Developer & Publisher */}
+        {/* Section 4: SteamSpy Tags with Autocomplete & Custom Addition */}
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--on-surface-variant)' }}>
+              Steam Tags & Descriptors ({formData.steamspy_tags.length} selected)
+            </label>
+            <span style={{ fontSize: '0.75rem', color: 'var(--outline)' }}>
+              Tags directly inform sub-genre classification
+            </span>
+          </div>
+
+          {/* Active Tags Pills */}
+          {formData.steamspy_tags.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
+              {formData.steamspy_tags.map((t) => (
+                <span
+                  key={t}
+                  style={{
+                    background: 'rgba(102, 192, 244, 0.15)',
+                    color: 'var(--primary)',
+                    border: '1px solid rgba(102, 192, 244, 0.35)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '3px 8px',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  {t}
+                  <X
+                    size={13}
+                    style={{ cursor: 'pointer', opacity: 0.8 }}
+                    onClick={() => removeTag(t)}
+                  />
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Tag Quick Select & Add */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+            {POPULAR_TAGS.filter((t) => !formData.steamspy_tags.includes(t)).slice(0, 14).map((t) => (
+              <button
+                type="button"
+                key={t}
+                onClick={() => toggleTag(t)}
+                className="tag-chip"
+                style={{ fontSize: '0.74rem', padding: '3px 8px' }}
+              >
+                <Plus size={11} /> {t}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <input
+              type="text"
+              placeholder="Type custom tag and press Enter..."
+              value={customTagInput}
+              onChange={(e) => setCustomTagInput(e.target.value)}
+              onKeyDown={handleAddCustomTag}
+              style={{ fontSize: '0.8rem', padding: '7px 10px' }}
+            />
+            <button
+              type="button"
+              onClick={handleAddCustomTag}
+              className="btn-secondary"
+              style={{ padding: '7px 14px', whiteSpace: 'nowrap' }}
+            >
+              Add Tag
+            </button>
+          </div>
+        </div>
+
+        {/* Section 5: Developer, Publisher, Platforms, Price */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <div>
-            <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+            <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--on-surface-variant)', display: 'block', marginBottom: '6px' }}>
               Developer Studio
             </label>
             <input
               type="text"
               name="developer"
               value={formData.developer}
-              onChange={handleChange}
+              onChange={handleInputChange}
               placeholder="e.g. Supergiant Games"
             />
           </div>
 
           <div>
-            <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+            <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--on-surface-variant)', display: 'block', marginBottom: '6px' }}>
               Publisher
             </label>
             <input
               type="text"
               name="publisher"
               value={formData.publisher}
-              onChange={handleChange}
+              onChange={handleInputChange}
               placeholder="e.g. Devolver Digital"
             />
           </div>
         </div>
 
-        {/* Pricing with Quick Buttons */}
+        {/* Pricing Controls */}
         <div>
-          <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+          <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--on-surface-variant)', display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
             <span>Launch Price ($ USD)</span>
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Normalized in ML Pipeline</span>
+            <span style={{ color: 'var(--outline)', fontSize: '0.75rem' }}>Continuous Normalized Signal</span>
           </label>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ position: 'relative', width: '130px', flexShrink: 0 }}>
-              <span style={{ position: 'absolute', left: '12px', top: '10px', color: 'var(--text-muted)' }}>$</span>
+              <span style={{ position: 'absolute', left: '10px', top: '9px', color: 'var(--outline)' }}>$</span>
               <input
                 type="number"
                 step="0.01"
                 min="0"
                 name="price"
                 value={formData.price}
-                onChange={handleChange}
-                style={{ paddingLeft: '26px' }}
+                onChange={handleInputChange}
+                className="font-mono"
+                style={{ paddingLeft: '24px', fontWeight: 600 }}
               />
             </div>
-            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-              {[0, 4.99, 9.99, 14.99, 19.99, 29.99, 59.99].map((p) => (
+            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+              {[0, 4.99, 9.99, 14.99, 19.99, 29.99, 39.99, 59.99].map((p) => (
                 <button
                   type="button"
                   key={p}
-                  onClick={() => handlePriceQuickSet(p)}
+                  onClick={() => handlePriceSet(p)}
+                  className="tag-chip font-mono"
                   style={{
-                    padding: '6px 10px', fontSize: '0.75rem', borderRadius: '6px',
-                    background: formData.price === p ? 'var(--steam-blue)' : 'var(--bg-secondary)',
-                    color: formData.price === p ? '#0a0e17' : 'var(--text-secondary)',
-                    border: '1px solid var(--border-subtle)', cursor: 'pointer', fontWeight: 600
+                    background: formData.price === p ? 'var(--primary)' : 'rgba(19, 27, 46, 0.85)',
+                    color: formData.price === p ? '#0b1326' : 'var(--on-surface-variant)',
+                    borderColor: formData.price === p ? 'var(--primary)' : 'rgba(51, 65, 85, 0.6)',
+                    fontWeight: 700
                   }}
                 >
-                  {p === 0 ? 'Free' : `$${p}`}
+                  {p === 0 ? 'FREE' : `$${p}`}
                 </button>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Tags & Categories */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-          <div>
-            <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
-              SteamSpy Tags (semicolon-separated)
-            </label>
-            <input
-              type="text"
-              name="steamspy_tags"
-              value={formData.steamspy_tags}
-              onChange={handleChange}
-              placeholder="Action;Roguelike;Indie;Difficult"
-            />
-          </div>
-
-          <div>
-            <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
-              Categories (semicolon-separated)
-            </label>
-            <input
-              type="text"
-              name="categories"
-              value={formData.categories}
-              onChange={handleChange}
-              placeholder="Single-player;Steam Achievements;Controller support"
-            />
-          </div>
-        </div>
-
         {/* Platforms & Achievements */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', alignItems: 'center' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', alignItems: 'center' }}>
           <div>
-            <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+            <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--on-surface-variant)', display: 'block', marginBottom: '6px' }}>
               Target Platforms
             </label>
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
-              {['windows', 'mac', 'linux'].map((plat) => {
-                const active = formData.platforms.includes(plat);
+            <div style={{ display: 'flex', gap: '6px' }}>
+              {[
+                { id: 'windows', label: 'Windows', icon: Monitor },
+                { id: 'mac', label: 'macOS', icon: Apple },
+                { id: 'linux', label: 'Linux', icon: Terminal }
+              ].map((plat) => {
+                const active = formData.platforms.includes(plat.id);
+                const IconComponent = plat.icon;
                 return (
                   <button
                     type="button"
-                    key={plat}
-                    onClick={() => handlePlatformToggle(plat)}
-                    style={{
-                      padding: '6px 12px', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', textTransform: 'capitalize',
-                      background: active ? 'rgba(102, 192, 244, 0.2)' : 'var(--bg-secondary)',
-                      color: active ? 'var(--steam-blue)' : 'var(--text-muted)',
-                      border: `1px solid ${active ? 'var(--steam-blue)' : 'var(--border-subtle)'}`,
-                      fontWeight: active ? 700 : 500
-                    }}
+                    key={plat.id}
+                    onClick={() => togglePlatform(plat.id)}
+                    className={`tag-chip ${active ? 'active' : ''}`}
+                    style={{ flex: 1, justifyContent: 'center', padding: '8px 10px' }}
                   >
-                    {plat}
+                    <IconComponent size={14} />
+                    <span>{plat.label}</span>
                   </button>
                 );
               })}
@@ -444,32 +648,33 @@ export default function PredictionStudio({ initialGame, onPredictionComplete }) 
           </div>
 
           <div>
-            <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
-              Steam Achievements Count
+            <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--on-surface-variant)', display: 'block', marginBottom: '6px' }}>
+              Steam Achievements
             </label>
             <input
               type="number"
               min="0"
               name="achievements"
               value={formData.achievements}
-              onChange={handleChange}
+              onChange={handleInputChange}
+              className="font-mono"
             />
           </div>
         </div>
 
-        {/* Vibe Score Control: Auto QLoRA vs Manual Override */}
-        <div style={{ background: 'rgba(10, 14, 23, 0.65)', border: '1px solid var(--border-subtle)', borderRadius: '10px', padding: '1rem 1.25rem' }}>
+        {/* Section 6: Narrative Signals Calibration (Vibes) */}
+        <div style={{ background: 'var(--surface-container-lowest)', border: '1px solid var(--outline-variant)', borderRadius: 'var(--radius-sm)', padding: '1.25rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: formData.use_manual_vibes ? '1rem' : '0' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <Sparkles size={18} style={{ color: formData.use_manual_vibes ? '#f59e0b' : 'var(--steam-blue)' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Sparkles size={18} style={{ color: formData.use_manual_vibes ? 'var(--status-warning)' : 'var(--primary)' }} />
               <div>
                 <span style={{ fontSize: '0.875rem', fontWeight: 700, color: '#fff', display: 'block' }}>
-                  {formData.use_manual_vibes ? 'Manual Vibe Scores Mode' : 'AI Autonomous Vibe Mode'}
+                  {formData.use_manual_vibes ? 'Manual Signal Calibration Mode' : 'Autonomous Narrative Analysis'}
                 </span>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--outline)' }}>
                   {formData.use_manual_vibes
-                    ? 'Custom scores will override the QLoRA LLM extractor'
-                    : 'Fine-tuned QLoRA Qwen3.5-0.8B will analyze store description on the fly'}
+                    ? 'Manually tuning market excitement, lore depth, and nostalgia appeal'
+                    : 'Store pitch text is evaluated dynamically to extract qualitative market signals'}
                 </span>
               </div>
             </div>
@@ -477,14 +682,11 @@ export default function PredictionStudio({ initialGame, onPredictionComplete }) 
             <button
               type="button"
               onClick={() => setFormData((prev) => ({ ...prev, use_manual_vibes: !prev.use_manual_vibes }))}
-              style={{
-                background: formData.use_manual_vibes ? 'rgba(245, 158, 11, 0.15)' : 'rgba(102, 192, 244, 0.15)',
-                color: formData.use_manual_vibes ? '#fbbf24' : 'var(--steam-blue)',
-                border: `1px solid ${formData.use_manual_vibes ? 'rgba(245, 158, 11, 0.4)' : 'rgba(102, 192, 244, 0.4)'}`,
-                padding: '6px 12px', borderRadius: '6px', fontSize: '0.775rem', fontWeight: 600, cursor: 'pointer'
-              }}
+              className="btn-secondary"
+              style={{ fontSize: '0.78rem', padding: '6px 12px' }}
             >
-              {formData.use_manual_vibes ? 'Switch to AI Auto-Extract' : 'Override Manually'}
+              <Sliders size={13} />
+              <span>{formData.use_manual_vibes ? 'Switch to Autonomous Mode' : 'Calibrate Manually'}</span>
             </button>
           </div>
 
@@ -492,8 +694,10 @@ export default function PredictionStudio({ initialGame, onPredictionComplete }) 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginTop: '0.75rem' }}>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '4px' }}>
-                  <span style={{ color: 'var(--steam-blue)' }}>Hype Score:</span>
-                  <span style={{ fontWeight: 700, color: '#fff' }}>{parseFloat(formData.hype_score).toFixed(1)}</span>
+                  <span style={{ color: 'var(--primary)' }}>Hype & Excitement:</span>
+                  <span className="font-mono" style={{ fontWeight: 700, color: '#fff' }}>
+                    {parseFloat(formData.hype_score).toFixed(1)} / 10.0
+                  </span>
                 </div>
                 <input
                   type="range"
@@ -502,14 +706,16 @@ export default function PredictionStudio({ initialGame, onPredictionComplete }) 
                   step="0.1"
                   name="hype_score"
                   value={formData.hype_score}
-                  onChange={handleChange}
+                  onChange={handleInputChange}
                 />
               </div>
 
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '4px' }}>
-                  <span style={{ color: '#c084fc' }}>Story Score:</span>
-                  <span style={{ fontWeight: 700, color: '#fff' }}>{parseFloat(formData.story_score).toFixed(1)}</span>
+                  <span style={{ color: '#c084fc' }}>Story & Lore Depth:</span>
+                  <span className="font-mono" style={{ fontWeight: 700, color: '#fff' }}>
+                    {parseFloat(formData.story_score).toFixed(1)} / 10.0
+                  </span>
                 </div>
                 <input
                   type="range"
@@ -518,14 +724,16 @@ export default function PredictionStudio({ initialGame, onPredictionComplete }) 
                   step="0.1"
                   name="story_score"
                   value={formData.story_score}
-                  onChange={handleChange}
+                  onChange={handleInputChange}
                 />
               </div>
 
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '4px' }}>
-                  <span style={{ color: '#fbbf24' }}>Nostalgia Score:</span>
-                  <span style={{ fontWeight: 700, color: '#fff' }}>{parseFloat(formData.nostalgia_score).toFixed(1)}</span>
+                  <span style={{ color: '#fbbf24' }}>Nostalgia Appeal:</span>
+                  <span className="font-mono" style={{ fontWeight: 700, color: '#fff' }}>
+                    {parseFloat(formData.nostalgia_score).toFixed(1)} / 10.0
+                  </span>
                 </div>
                 <input
                   type="range"
@@ -534,51 +742,36 @@ export default function PredictionStudio({ initialGame, onPredictionComplete }) 
                   step="0.1"
                   name="nostalgia_score"
                   value={formData.nostalgia_score}
-                  onChange={handleChange}
+                  onChange={handleInputChange}
                 />
               </div>
             </div>
           )}
         </div>
 
-        {/* Submit Action Button */}
+        {/* Submit Prediction Button */}
         <button
           type="submit"
           disabled={loading}
-          style={{
-            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '10px',
-            padding: '14px 20px',
-            fontSize: '1rem',
-            fontWeight: 700,
-            cursor: loading ? 'not-allowed' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '10px',
-            boxShadow: '0 4px 20px rgba(16, 185, 129, 0.3)',
-            transition: 'all 0.2s ease',
-            marginTop: '0.5rem'
-          }}
+          className="btn-primary"
+          style={{ width: '100%', padding: '13px 20px', fontSize: '0.975rem' }}
         >
           {loading ? (
             <>
               <div
                 style={{
                   width: '18px', height: '18px', borderRadius: '50%',
-                  border: '2px solid rgba(255,255,255,0.3)',
-                  borderTopColor: '#fff',
+                  border: '2px solid rgba(11, 19, 38, 0.4)',
+                  borderTopColor: '#0b1326',
                   animation: 'spin 1s linear infinite'
                 }}
               />
-              <span>Evaluating Market Viability...</span>
+              <span>Forecasting Commercial Viability...</span>
             </>
           ) : (
             <>
-              <Play size={18} fill="#fff" />
-              <span>Predict Steam Market Success</span>
+              <Play size={18} fill="#0b1326" />
+              <span>Run Commercial Viability Forecast</span>
             </>
           )}
         </button>
