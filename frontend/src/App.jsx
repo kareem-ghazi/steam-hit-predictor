@@ -1,16 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { Gamepad2, Database, Sparkles, Activity, ShieldCheck, AlertCircle } from 'lucide-react';
+import {
+  Gamepad2, Database, Sparkles, Activity, ShieldCheck, AlertCircle,
+  Home, Compass, Layers, Github
+} from 'lucide-react';
+import LandingPage from './components/LandingPage';
 import PredictionStudio from './components/PredictionStudio';
-import ResultsPane from './components/ResultsPane';
+import DescriptionAnalyzerPane from './components/DescriptionAnalyzerPane';
+import HitAnalyzerPane from './components/HitAnalyzerPane';
 import DatasetExplorer from './components/DatasetExplorer';
 
 const API_BASE = 'http://127.0.0.1:8000';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('studio'); // 'studio' | 'explorer'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'studio' | 'explorer'
   const [predictionResult, setPredictionResult] = useState(null);
   const [loadingPrediction, setLoadingPrediction] = useState(false);
   const [selectedGameForStudio, setSelectedGameForStudio] = useState(null);
+
+  // Dual-Pane Toggles in Developer Studio
+  const [descriptionAnalyzerActive, setDescriptionAnalyzerActive] = useState(true);
+  const [hitAnalyzerActive, setHitAnalyzerActive] = useState(true);
 
   // Backend health state
   const [backendStatus, setBackendStatus] = useState('checking'); // 'connected' | 'disconnected' | 'checking'
@@ -38,6 +47,21 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
+  // Enforce rule: if Hit Analyzer is activated, Game Description Analyzer MUST be activated too!
+  const handleToggleDescriptionAnalyzer = (active) => {
+    setDescriptionAnalyzerActive(active);
+    if (!active && hitAnalyzerActive) {
+      setHitAnalyzerActive(false); // Hit analyzer depends on description analyzer
+    }
+  };
+
+  const handleToggleHitAnalyzer = (active) => {
+    setHitAnalyzerActive(active);
+    if (active && !descriptionAnalyzerActive) {
+      setDescriptionAnalyzerActive(true); // Auto-activate description analyzer
+    }
+  };
+
   const handleGameSelectFromExplorer = (game) => {
     setSelectedGameForStudio(game);
     setActiveTab('studio');
@@ -58,8 +82,11 @@ export default function App() {
         }}
       >
         <div style={{ maxWidth: '1600px', width: '100%', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          {/* Brand & Title */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+          {/* Brand & Logo */}
+          <div
+            onClick={() => setActiveTab('overview')}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', cursor: 'pointer' }}
+          >
             <div
               style={{
                 background: 'linear-gradient(135deg, #1a9fff 0%, #0077cc 100%)',
@@ -91,6 +118,14 @@ export default function App() {
           {/* Segmented Navigation Tabs */}
           <div className="segmented-nav">
             <button
+              onClick={() => setActiveTab('overview')}
+              className={`segmented-tab ${activeTab === 'overview' ? 'active' : ''}`}
+            >
+              <Home size={15} style={{ color: activeTab === 'overview' ? 'var(--primary)' : 'inherit' }} />
+              <span>Overview</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('studio')}
               className={`segmented-tab ${activeTab === 'studio' ? 'active' : ''}`}
             >
@@ -107,11 +142,11 @@ export default function App() {
             </button>
           </div>
 
-          {/* Real-time Status Badge */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          {/* Minimal Engine Status Badge ("Online" or "Offline") */}
+          <div style={{ display: 'flex', alignItems: 'center' }}>
             <span
               className={`badge-pill ${backendStatus === 'connected' ? 'badge-overwhelmingly-positive' : 'badge-negative'}`}
-              style={{ padding: '5px 12px' }}
+              style={{ padding: '4px 12px', fontSize: '0.75rem' }}
             >
               <span
                 className="pulsating-dot"
@@ -119,58 +154,151 @@ export default function App() {
                   backgroundColor: backendStatus === 'connected' ? 'var(--status-positive-bright)' : 'var(--status-negative-bright)'
                 }}
               />
-              <span>
-                {backendStatus === 'connected'
-                  ? `Engine Online (${backendMeta?.games_in_memory?.toLocaleString() || '27,810'} Releases)`
-                  : 'Engine Offline'}
-              </span>
+              <span>{backendStatus === 'connected' ? 'Online' : 'Offline'}</span>
             </span>
           </div>
         </div>
       </header>
 
-      {/* Main Content Area (1600px max width, 12-column grid layout) */}
+      {/* Main Content Area */}
       <main style={{ flex: 1, maxWidth: '1600px', width: '100%', margin: '0 auto', padding: '1.75rem 2rem' }}>
-        {activeTab === 'studio' ? (
+        {activeTab === 'overview' && (
+          <LandingPage
+            onNavigateToStudio={() => setActiveTab('studio')}
+            onNavigateToExplorer={() => setActiveTab('explorer')}
+          />
+        )}
+
+        {activeTab === 'studio' && (
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.25fr) minmax(0, 0.95fr)', gap: '1.75rem', alignItems: 'start' }}>
+            {/* Left Column: Developer Studio Form */}
             <PredictionStudio
               initialGame={selectedGameForStudio}
               onPredictionComplete={(result) => {
                 setPredictionResult(result);
               }}
+              descriptionAnalyzerActive={descriptionAnalyzerActive}
+              hitAnalyzerActive={hitAnalyzerActive}
             />
-            <ResultsPane
-              result={predictionResult}
-              loading={loadingPrediction}
-            />
+
+            {/* Right Column: TWO Panes Stacked on Top of Each Other */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {/* Top Pane: Game Description Analyzer */}
+              <DescriptionAnalyzerPane
+                active={descriptionAnalyzerActive}
+                onToggleActive={handleToggleDescriptionAnalyzer}
+                result={predictionResult}
+                loading={loadingPrediction}
+              />
+
+              {/* Bottom Pane: Commercial Hit Analyzer */}
+              <HitAnalyzerPane
+                active={hitAnalyzerActive}
+                onToggleActive={handleToggleHitAnalyzer}
+                result={predictionResult}
+                loading={loadingPrediction}
+              />
+            </div>
           </div>
-        ) : (
+        )}
+
+        {activeTab === 'explorer' && (
           <DatasetExplorer
             onSelectGameForStudio={handleGameSelectFromExplorer}
           />
         )}
       </main>
 
-      {/* Footer */}
+      {/* Professional SaaS Footer */}
       <footer
         style={{
           borderTop: '1px solid rgba(51, 65, 85, 0.5)',
-          padding: '1.25rem 2rem',
-          fontSize: '0.78rem',
-          color: 'var(--outline)',
+          padding: '2.5rem 2rem 1.75rem',
           background: 'var(--surface-container-lowest)'
         }}
       >
-        <div style={{ maxWidth: '1600px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
-          <div>
-            Steam Hit Predictor • Trained on 27,810 verified Steam games with ≥50 reviews
+        <div style={{ maxWidth: '1600px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          {/* Top Footer Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '2rem' }}>
+            {/* Column 1: Brand & Identity */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.75rem' }}>
+                <div style={{ background: 'var(--primary)', color: '#0b1326', padding: '4px', borderRadius: 'var(--radius-sm)', display: 'flex' }}>
+                  <Gamepad2 size={16} />
+                </div>
+                <span className="font-mono" style={{ fontSize: '0.85rem', fontWeight: 800, color: '#fff', letterSpacing: '0.04em' }}>
+                  GAMEMETRICS // STEAM HIT PREDICTOR
+                </span>
+              </div>
+              <p style={{ fontSize: '0.8rem', color: 'var(--outline)', lineHeight: 1.5, maxWidth: '340px' }}>
+                Commercial viability forecasting and video game market intelligence, transforming historical Steam telemetry into predictive success models.
+              </p>
+            </div>
+
+            {/* Column 2: Dataset Statistics */}
+            <div>
+              <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#fff', marginBottom: '0.75rem' }}>
+                Empirical Archive
+              </h4>
+              <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.78rem', color: 'var(--outline)' }}>
+                <li>• 27,810 Verified Steam Releases (≥50 Reviews)</li>
+                <li>• 194 Multi-label, Categorical & Scaled Dimensions</li>
+                <li>• Stratified 80/10/10 Train, Validation, and Test Partition</li>
+                <li>• Harmonized Multi-Source Metadata & Pricing</li>
+              </ul>
+            </div>
+
+            {/* Column 3: Platform Capabilities */}
+            <div>
+              <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#fff', marginBottom: '0.75rem' }}>
+                Predictive Architecture
+              </h4>
+              <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.78rem', color: 'var(--outline)' }}>
+                <li>• Autonomous Pitch Narrative Sentiment Engine</li>
+                <li>• Commercial Hit vs Underperformer Classification</li>
+                <li>• Projected Community Reception Tiers</li>
+                <li>• Nearest Neighbor Historical Comparables Engine</li>
+              </ul>
+            </div>
+
+            {/* Column 4: Quick Navigation */}
+            <div>
+              <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#fff', marginBottom: '0.75rem' }}>
+                Platform Navigation
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.78rem' }}>
+                <span
+                  onClick={() => setActiveTab('overview')}
+                  style={{ color: 'var(--primary)', cursor: 'pointer', display: 'inline-block' }}
+                >
+                  → Platform Overview & Benchmarks
+                </span>
+                <span
+                  onClick={() => setActiveTab('studio')}
+                  style={{ color: 'var(--primary)', cursor: 'pointer', display: 'inline-block' }}
+                >
+                  → Developer Prediction Studio
+                </span>
+                <span
+                  onClick={() => setActiveTab('explorer')}
+                  style={{ color: 'var(--primary)', cursor: 'pointer', display: 'inline-block' }}
+                >
+                  → Explore 27,810 Games Archive
+                </span>
+              </div>
+            </div>
           </div>
-          <div className="font-mono" style={{ display: 'flex', gap: '1.25rem' }}>
-            <span>27,810 Historical Releases</span>
-            <span>•</span>
-            <span>194 Market Dimensions</span>
-            <span>•</span>
-            <span>Autonomous Narrative Sentiment Engine</span>
+
+          {/* Bottom Copyright Strip */}
+          <div style={{ borderTop: '1px solid rgba(51, 65, 85, 0.4)', paddingTop: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', fontSize: '0.75rem', color: 'var(--outline)' }}>
+            <div>
+              © 2026 GameMetrics • Steam Hit Predictor Platform. Built for game developers, analysts & publishers.
+            </div>
+            <div className="font-mono" style={{ display: 'flex', gap: '1rem' }}>
+              <span>Engine Status: {backendStatus === 'connected' ? 'ONLINE (0.1096 Logloss)' : 'OFFLINE'}</span>
+              <span>•</span>
+              <span>FastAPI & Vite</span>
+            </div>
           </div>
         </div>
       </footer>

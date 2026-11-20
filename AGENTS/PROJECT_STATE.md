@@ -48,34 +48,27 @@
   - Verified live inference with FastAPI TestClient.
 - **Phase 5: The React Frontend Dashboard ([frontend/](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/frontend/)):**
   - **Design System Alignment ([AGENTS/DESIGN.md](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/AGENTS/DESIGN.md)):**
-    - Overhauled [frontend/src/index.css](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/frontend/src/index.css) to adhere strictly to the `GameMetrics` design system:
-      - Surfaces: `#0b1326` (Canvas ground), `#131b2e` / `#171f33` (Surface Tier 1 & 2), and `rgba(17, 25, 41, 0.85)` with `backdrop-filter: blur(12px) saturate(160%)` (Surface Tier 3 Glass Header).
-      - Palette: Steam Cyan (`#66c0f4`, hover `#4196c6`), Secondary Atmospheric Blue (`#2a475e`), Emerald Hit (`#10b981`), Rose Coral Flop (`#f43f5e`), and Amber Mixed (`#f59e0b`).
-      - Dual Typography: **Inter** for headlines and interface prose; **JetBrains Mono** with `font-variant-numeric: tabular-nums` for all telemetry readouts, percentages, prices, AppIDs, and latencies.
-      - Component geometry: Calibrated soft radii (`4px` base controls, `8px` cards, `9999px` status pills with pulsating dots).
-  - **Model Anonymization & Professionalization:**
-    - Stripped all user-facing references to specific ML/LLM model names (`XGBoost`, `QLoRA`, `Qwen3.5-0.8B`, `BitsAndBytes`).
-    - Elevated messaging to industry-standard market intelligence language:
-      - "Commercial Viability Intelligence & Market Forecasting for Steam Releases"
-      - "Autonomous Narrative Sentiment Engine" vs "User Calibrated Signals"
-      - "194 Market Dimensions Evaluated"
-  - **Interactive Developer Studio ([frontend/src/components/PredictionStudio.jsx](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/frontend/src/components/PredictionStudio.jsx)):**
-    - Replaced raw text inputs with high-density multi-select interactive chips/pills:
-      - **Genre Selector:** Interactive pill chips for all standard Steam genres with primary genre designation.
-      - **Game Modes & Features Selector:** Interactive multi-select chips for Steam categories (Single-player, Online PvP, Co-op, Steam Achievements, Cloud, Workshop, etc.).
-      - **SteamSpy Descriptors & Tags:** Interactive chip cloud of top Steam tags + dynamic "Add custom tag" input with keyboard Enter handling.
-      - **Platform Toggles:** Icon-backed toggles for Windows, macOS, and Linux.
-      - **Price Selector:** Quick pill presets (Free, $4.99, $9.99, $14.99, $19.99, $29.99, $39.99, $59.99) + numeric input in USD.
-      - **Benchmark Archetypes:** Instant loading of tested hit/flop archetypes (Metroidvania Masterpiece, Retro Boomer Shooter, Cozy Farming Sim, Generic Zombie Survival).
-      - **Narrative Calibration Mode:** Clean toggle between autonomous pitch analysis and manual signal calibration sliders.
-  - **Elevated Results Pane ([frontend/src/components/ResultsPane.jsx](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/frontend/src/components/ResultsPane.jsx)):**
-    - Primary Hit-Prediction card with glowing semantic status banner, large monospaced hit probability percentage, and 4-column telemetry matrix (Projected Community Tier with pulsating dot, Forecast Confidence, Pipeline Latency, and Market Dimensions).
-    - Qualitative narrative sentiment meters (Hype, Story Depth, Nostalgia).
-    - 3 closest historical comparables from `cleaned_data/` with AppID badges, pricing, approval rate %, and store pitch snippets.
+    - Adheres to `GameMetrics` design system: Canvas `#0b1326`, Surfaces `#131b2e` / `#171f33`, 64px Glass Header (`backdrop-filter: blur(12px)`), Steam Cyan (`#66c0f4`), Emerald Hit (`#10b981`), Rose Flop (`#f43f5e`), Inter + JetBrains Mono typography with tabular lining figures.
+  - **Dedicated Landing Page ([frontend/src/components/LandingPage.jsx](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/frontend/src/components/LandingPage.jsx)):**
+    - High-impact Overview tab showcasing platform intelligence, 4-metric telemetry strip (27,810 releases, 96.26% accuracy, 194 dimensions, <15ms latency), 3 architecture cards, and quick CTAs.
+  - **Dual-Pane Developer Studio Architecture:**
+    - Right side split into TWO vertically stacked panes with independent toggles:
+      1. [frontend/src/components/DescriptionAnalyzerPane.jsx](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/frontend/src/components/DescriptionAnalyzerPane.jsx): Evaluates store pitch narrative signals (Hype, Story Depth, Nostalgia) with high-contrast meters.
+      2. [frontend/src/components/HitAnalyzerPane.jsx](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/frontend/src/components/HitAnalyzerPane.jsx): Commercial Hit vs Flop forecast, probability gauge, telemetry matrix, and 3 nearest historical comparables.
+      - **Enforced Constraint:** Activating Hit Analyzer automatically activates Game Description Analyzer. Deactivating Game Description Analyzer deactivates Hit Analyzer.
+  - **Studio Form Refinements ([frontend/src/components/PredictionStudio.jsx](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/frontend/src/components/PredictionStudio.jsx)):**
+    - "Primary Genre" selector moved directly into the "Select Genres" section.
+    - Removed manual vibe sliders; automatic model calculation is the seamless default.
+    - Removed "Evaluated by Narrative Sentiment Engine" text.
+    - Clean "Predict" action button.
   - **Elevated Dataset Explorer ([frontend/src/components/DatasetExplorer.jsx](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/frontend/src/components/DatasetExplorer.jsx)):**
-    - 27,810 verified historical games displayed in a high-density grid.
-    - AppID badges in JetBrains Mono (`label-sm`), Steam rating tier pills, segmented status tabs (All, Hits, Flops), and one-click "Load into Developer Studio" action.
-  - **Verified Production Build:** `cd frontend && npm run build` successfully transformed 1,503 modules in 4.07s with zero errors or warnings.
+    - "All Releases / Hits (≥80%) / Flops (<80%)" controls grouped directly with the filter toolbar.
+    - Added Price Bracket filter (Free, Budget, Mid-Tier, Premium) and Sort By controls.
+    - High-contrast Narrative Signals progress bars with distinct unfilled dark slate tracks (`#1e293b`) and bright gradient fills so partial scores (<10/10) are immediately visible.
+  - **Minimal Status & SaaS Footer ([frontend/src/App.jsx](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/frontend/src/App.jsx)):**
+    - Engine status indicator streamlined to minimal "Online" / "Offline".
+    - Multi-column professional SaaS footer with empirical statistics, predictive architecture specs, quick links, and system status.
+  - **Verified Production Build:** `npm run build` transformed 1,505 modules in 4.38s with zero errors.
 
 ## 2. Dependencies & Runtime
 - **Backend:** `fastapi` 0.165.0, `uvicorn` 0.54.0, `pydantic` 2.13.5, `httpx` 0.28.1, `pytest` 9.2.0, `torch` (CUDA 12.1+), `transformers` 5.18.0, `peft` 0.21.2, `bitsandbytes` 0.50.2, `xgboost` 2.1.4, `scikit-learn` 1.6.1, `pandas` 2.2.3, `numpy` 2.2.3.
@@ -85,22 +78,23 @@
 ```text
 React Frontend (Vite :5173 - GameMetrics Design System)
    │
-   ├──► [DatasetExplorer.jsx] ─── GET /games, GET /metadata ───► FastAPI Backend (:8000)
-   │         ▲                                                        │
-   │         └── Click "Load into Developer Studio" ──────────────────┘
+   ├──► [LandingPage.jsx] ──── Platform Overview, Metrics & Navigation
    │
-   └──► [PredictionStudio.jsx] ── POST /predict (Payload) ─────► FastAPI Backend (:8000)
-             │  (Multi-select Genre/Category/Tag Chips)               │
-             │                                                        ├──► Narrative Sentiment Engine
-             │                                                        ├──► Feature Transformer (194 feats)
-             │                                                        ├──► Commercial Viability Classifier
-             │                                                        └──► Historical Memory (27,810 Games)
-             ▼                                                        │
-        [ResultsPane.jsx] ◄──── JSON Prediction Result ───────────────┘
-          - Commercial Hit / Underperformer Banner + % Readout
-          - Projected Community Reception Tier + Telemetry Matrix
-          - Qualitative Narrative Sentiment Signals (Hype, Story, Nostalgia)
-          - 3 Closest Historical Comparables with AppIDs
+   ├──► [DatasetExplorer.jsx] ─ Grouped Filters (Hits/Flops/Genre/Price/Sort) ──► GET /games (:8000)
+   │         ▲                  High-Contrast Narrative Signal Bars
+   │         └── Click "Load into Developer Studio" ────────────────────────────┘
+   │
+   └──► [PredictionStudio.jsx] (Primary Genre in Genre area + Auto Vibes)
+             │
+             ├──► POST /predict (Payload) ──────────────────────────────────────► FastAPI (:8000)
+             │                                                                      │
+             ├──► [DescriptionAnalyzerPane.jsx] (Toggle ON/OFF) ◄──────────────────┤
+             │      - Narrative Vibe Signals (Hype, Story, Nostalgia)               │
+             │                                                                      │
+             └──► [HitAnalyzerPane.jsx] (Toggle ON/OFF - requires Desc) ◄───────────┘
+                    - Commercial Hit / Flop Gauge + Probability %
+                    - Projected Community Reception Tier + Telemetry
+                    - 3 Closest Historical Comparables with AppIDs
 ```
 
 ## 4. Next Step

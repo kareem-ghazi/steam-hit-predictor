@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Sparkles, Sliders, Play, RotateCcw, AlertCircle, Check, Plus, X,
-  Layers, Gamepad2, Monitor, Apple, Terminal, DollarSign, Tag, Info
+  Sparkles, Play, RotateCcw, AlertCircle, Check, Plus, X,
+  Gamepad2, Monitor, Apple, Terminal, DollarSign, Layers
 } from 'lucide-react';
 
 const API_BASE = 'http://127.0.0.1:8000';
@@ -45,11 +45,7 @@ const PRESETS = [
       price: 19.99,
       english: 1,
       required_age: 0,
-      achievements: 45,
-      use_manual_vibes: false,
-      hype_score: 8.5,
-      story_score: 9.0,
-      nostalgia_score: 7.2
+      achievements: 45
     }
   },
   {
@@ -67,11 +63,7 @@ const PRESETS = [
       price: 14.99,
       english: 1,
       required_age: 18,
-      achievements: 30,
-      use_manual_vibes: false,
-      hype_score: 8.0,
-      story_score: 4.5,
-      nostalgia_score: 9.6
+      achievements: 30
     }
   },
   {
@@ -89,11 +81,7 @@ const PRESETS = [
       price: 14.99,
       english: 1,
       required_age: 0,
-      achievements: 36,
-      use_manual_vibes: false,
-      hype_score: 7.5,
-      story_score: 8.8,
-      nostalgia_score: 8.2
+      achievements: 36
     }
   },
   {
@@ -111,16 +99,17 @@ const PRESETS = [
       price: 29.99,
       english: 1,
       required_age: 0,
-      achievements: 0,
-      use_manual_vibes: false,
-      hype_score: 2.1,
-      story_score: 1.5,
-      nostalgia_score: 1.0
+      achievements: 0
     }
   }
 ];
 
-export default function PredictionStudio({ initialGame, onPredictionComplete }) {
+export default function PredictionStudio({
+  initialGame,
+  onPredictionComplete,
+  descriptionAnalyzerActive,
+  hitAnalyzerActive
+}) {
   const [formData, setFormData] = useState({
     name: 'Chronicles of Eldoria',
     description: 'An atmospheric dark-fantasy roguelike deckbuilder featuring deep branching narrative choices, procedural dungeons, hand-crafted pixel art, and deeply tactical turn-based card combat.',
@@ -134,18 +123,14 @@ export default function PredictionStudio({ initialGame, onPredictionComplete }) 
     price: 19.99,
     english: 1,
     required_age: 0,
-    achievements: 25,
-    use_manual_vibes: false,
-    hype_score: 7.5,
-    story_score: 8.0,
-    nostalgia_score: 6.5
+    achievements: 25
   });
 
   const [customTagInput, setCustomTagInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Sync if initialGame is sent from DatasetExplorer
+  // Sync if initialGame is loaded from DatasetExplorer
   useEffect(() => {
     if (initialGame) {
       const parsedGenres = (initialGame.genres || '')
@@ -177,11 +162,7 @@ export default function PredictionStudio({ initialGame, onPredictionComplete }) 
         steamspy_tags: parsedTags.length > 0 ? parsedTags : prev.steamspy_tags,
         platforms: parsedPlats.length > 0 ? parsedPlats : prev.platforms,
         price: initialGame.price !== undefined ? initialGame.price : prev.price,
-        achievements: initialGame.achievements || prev.achievements,
-        use_manual_vibes: true,
-        hype_score: initialGame.hype_score || 7.0,
-        story_score: initialGame.story_score || 7.0,
-        nostalgia_score: initialGame.nostalgia_score || 7.0
+        achievements: initialGame.achievements || prev.achievements
       }));
     }
   }, [initialGame]);
@@ -281,13 +262,7 @@ export default function PredictionStudio({ initialGame, onPredictionComplete }) 
         english: parseInt(formData.english, 10),
         required_age: parseInt(formData.required_age, 10) || 0,
         achievements: parseInt(formData.achievements, 10) || 0,
-        vibe_scores: formData.use_manual_vibes
-          ? {
-              hype_score: parseFloat(formData.hype_score),
-              story_score: parseFloat(formData.story_score),
-              nostalgia_score: parseFloat(formData.nostalgia_score)
-            }
-          : null
+        vibe_scores: null // Default: automatically calculate using model
       };
 
       const res = await fetch(`${API_BASE}/predict`, {
@@ -323,8 +298,8 @@ export default function PredictionStudio({ initialGame, onPredictionComplete }) 
               Developer Studio
             </h2>
           </div>
-          <p style={{ fontSize: '0.85rem', color: 'var(--on-surface-variant)' }}>
-            Configure game attributes & evaluate Steam commercial viability
+          <p style={{ fontSize: '0.825rem', color: 'var(--on-surface-variant)' }}>
+            Configure game attributes & evaluate Steam market performance
           </p>
         </div>
 
@@ -356,29 +331,55 @@ export default function PredictionStudio({ initialGame, onPredictionComplete }) 
         </div>
       )}
 
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-        {/* Section 1: Title & Pitch Description */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
-            <div>
-              <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--on-surface-variant)', display: 'block', marginBottom: '6px' }}>
-                Game Title *
-              </label>
-              <input
-                type="text"
-                name="name"
-                required
-                value={formData.name}
-                onChange={handleInputChange}
-                placeholder="e.g. Hollow Knight, Hades, Balatro"
-              />
-            </div>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.4rem' }}>
+        {/* Game Title */}
+        <div>
+          <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--on-surface-variant)', display: 'block', marginBottom: '6px' }}>
+            Game Title *
+          </label>
+          <input
+            type="text"
+            name="name"
+            required
+            value={formData.name}
+            onChange={handleInputChange}
+            placeholder="e.g. Hollow Knight, Hades, Balatro"
+          />
+        </div>
 
-            <div>
-              <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--on-surface-variant)', display: 'block', marginBottom: '6px' }}>
-                Primary Genre *
-              </label>
-              <select name="primary_genre" value={formData.primary_genre} onChange={handleInputChange}>
+        {/* Store Pitch / Description */}
+        <div>
+          <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--on-surface-variant)', display: 'block', marginBottom: '6px' }}>
+            Steam Store Pitch / Description *
+          </label>
+          <textarea
+            name="description"
+            rows="3"
+            required
+            value={formData.description}
+            onChange={handleInputChange}
+            placeholder="Describe gameplay mechanics, world setting, visual aesthetic, and mood..."
+          />
+        </div>
+
+        {/* Section 2: Genres & Primary Genre Select Box */}
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+            <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--on-surface-variant)' }}>
+              Select Genres ({formData.genres.length} active)
+            </label>
+
+            {/* Primary Genre Select Box placed directly near the select genres area */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '0.78rem', color: 'var(--outline)', fontWeight: 600 }}>
+                Primary Genre:
+              </span>
+              <select
+                name="primary_genre"
+                value={formData.primary_genre}
+                onChange={handleInputChange}
+                style={{ width: 'auto', padding: '5px 10px', fontSize: '0.78rem', height: '32px' }}
+              >
                 {formData.genres.map((g) => (
                   <option key={g} value={g}>{g}</option>
                 ))}
@@ -389,36 +390,6 @@ export default function PredictionStudio({ initialGame, onPredictionComplete }) 
             </div>
           </div>
 
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-              <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--on-surface-variant)' }}>
-                Steam Store Pitch / Description *
-              </label>
-              <span className="font-mono" style={{ fontSize: '0.72rem', color: 'var(--primary)', letterSpacing: '0.02em' }}>
-                Evaluated by Narrative Sentiment Engine
-              </span>
-            </div>
-            <textarea
-              name="description"
-              rows="3"
-              required
-              value={formData.description}
-              onChange={handleInputChange}
-              placeholder="Describe gameplay mechanics, world setting, visual aesthetic, and mood..."
-            />
-          </div>
-        </div>
-
-        {/* Section 2: Interactive Genre Selection Chips */}
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--on-surface-variant)' }}>
-              Select Genres ({formData.genres.length} active)
-            </label>
-            <span style={{ fontSize: '0.75rem', color: 'var(--outline)' }}>
-              Click to toggle • Primary: <strong style={{ color: 'var(--primary)' }}>{formData.primary_genre}</strong>
-            </span>
-          </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
             {AVAILABLE_GENRES.map((g) => {
               const active = formData.genres.includes(g);
@@ -443,14 +414,14 @@ export default function PredictionStudio({ initialGame, onPredictionComplete }) 
           </div>
         </div>
 
-        {/* Section 3: Interactive Categories Selection Chips */}
+        {/* Section 3: Categories Selection Chips */}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
             <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--on-surface-variant)' }}>
               Game Modes & Steam Features ({formData.categories.length} active)
             </label>
             <span style={{ fontSize: '0.75rem', color: 'var(--outline)' }}>
-              Select all features planned for launch
+              Select planned features
             </span>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
@@ -478,13 +449,13 @@ export default function PredictionStudio({ initialGame, onPredictionComplete }) 
               Steam Tags & Descriptors ({formData.steamspy_tags.length} selected)
             </label>
             <span style={{ fontSize: '0.75rem', color: 'var(--outline)' }}>
-              Tags directly inform sub-genre classification
+              Sub-genre and theme classification
             </span>
           </div>
 
-          {/* Active Tags Pills */}
+          {/* Active Tags */}
           {formData.steamspy_tags.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
               {formData.steamspy_tags.map((t) => (
                 <span
                   key={t}
@@ -514,7 +485,7 @@ export default function PredictionStudio({ initialGame, onPredictionComplete }) 
 
           {/* Tag Quick Select & Add */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
-            {POPULAR_TAGS.filter((t) => !formData.steamspy_tags.includes(t)).slice(0, 14).map((t) => (
+            {POPULAR_TAGS.filter((t) => !formData.steamspy_tags.includes(t)).slice(0, 12).map((t) => (
               <button
                 type="button"
                 key={t}
@@ -547,7 +518,7 @@ export default function PredictionStudio({ initialGame, onPredictionComplete }) 
           </div>
         </div>
 
-        {/* Section 5: Developer, Publisher, Platforms, Price */}
+        {/* Section 5: Developer, Publisher */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <div>
             <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--on-surface-variant)', display: 'block', marginBottom: '6px' }}>
@@ -583,7 +554,7 @@ export default function PredictionStudio({ initialGame, onPredictionComplete }) 
             <span style={{ color: 'var(--outline)', fontSize: '0.75rem' }}>Continuous Normalized Signal</span>
           </label>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ position: 'relative', width: '130px', flexShrink: 0 }}>
+            <div style={{ position: 'relative', width: '120px', flexShrink: 0 }}>
               <span style={{ position: 'absolute', left: '10px', top: '9px', color: 'var(--outline)' }}>$</span>
               <input
                 type="number"
@@ -662,99 +633,12 @@ export default function PredictionStudio({ initialGame, onPredictionComplete }) 
           </div>
         </div>
 
-        {/* Section 6: Narrative Signals Calibration (Vibes) */}
-        <div style={{ background: 'var(--surface-container-lowest)', border: '1px solid var(--outline-variant)', borderRadius: 'var(--radius-sm)', padding: '1.25rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: formData.use_manual_vibes ? '1rem' : '0' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Sparkles size={18} style={{ color: formData.use_manual_vibes ? 'var(--status-warning)' : 'var(--primary)' }} />
-              <div>
-                <span style={{ fontSize: '0.875rem', fontWeight: 700, color: '#fff', display: 'block' }}>
-                  {formData.use_manual_vibes ? 'Manual Signal Calibration Mode' : 'Autonomous Narrative Analysis'}
-                </span>
-                <span style={{ fontSize: '0.75rem', color: 'var(--outline)' }}>
-                  {formData.use_manual_vibes
-                    ? 'Manually tuning market excitement, lore depth, and nostalgia appeal'
-                    : 'Store pitch text is evaluated dynamically to extract qualitative market signals'}
-                </span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setFormData((prev) => ({ ...prev, use_manual_vibes: !prev.use_manual_vibes }))}
-              className="btn-secondary"
-              style={{ fontSize: '0.78rem', padding: '6px 12px' }}
-            >
-              <Sliders size={13} />
-              <span>{formData.use_manual_vibes ? 'Switch to Autonomous Mode' : 'Calibrate Manually'}</span>
-            </button>
-          </div>
-
-          {formData.use_manual_vibes && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginTop: '0.75rem' }}>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '4px' }}>
-                  <span style={{ color: 'var(--primary)' }}>Hype & Excitement:</span>
-                  <span className="font-mono" style={{ fontWeight: 700, color: '#fff' }}>
-                    {parseFloat(formData.hype_score).toFixed(1)} / 10.0
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min="1"
-                  max="10"
-                  step="0.1"
-                  name="hype_score"
-                  value={formData.hype_score}
-                  onChange={handleInputChange}
-                />
-              </div>
-
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '4px' }}>
-                  <span style={{ color: '#c084fc' }}>Story & Lore Depth:</span>
-                  <span className="font-mono" style={{ fontWeight: 700, color: '#fff' }}>
-                    {parseFloat(formData.story_score).toFixed(1)} / 10.0
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min="1"
-                  max="10"
-                  step="0.1"
-                  name="story_score"
-                  value={formData.story_score}
-                  onChange={handleInputChange}
-                />
-              </div>
-
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '4px' }}>
-                  <span style={{ color: '#fbbf24' }}>Nostalgia Appeal:</span>
-                  <span className="font-mono" style={{ fontWeight: 700, color: '#fff' }}>
-                    {parseFloat(formData.nostalgia_score).toFixed(1)} / 10.0
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min="1"
-                  max="10"
-                  step="0.1"
-                  name="nostalgia_score"
-                  value={formData.nostalgia_score}
-                  onChange={handleInputChange}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Submit Prediction Button */}
+        {/* Predict Action Button (Changed to just 'Predict') */}
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || (!descriptionAnalyzerActive && !hitAnalyzerActive)}
           className="btn-primary"
-          style={{ width: '100%', padding: '13px 20px', fontSize: '0.975rem' }}
+          style={{ width: '100%', padding: '13px 20px', fontSize: '1rem', fontWeight: 700 }}
         >
           {loading ? (
             <>
@@ -766,12 +650,12 @@ export default function PredictionStudio({ initialGame, onPredictionComplete }) 
                   animation: 'spin 1s linear infinite'
                 }}
               />
-              <span>Forecasting Commercial Viability...</span>
+              <span>Forecasting...</span>
             </>
           ) : (
             <>
               <Play size={18} fill="#0b1326" />
-              <span>Run Commercial Viability Forecast</span>
+              <span>Predict</span>
             </>
           )}
         </button>
