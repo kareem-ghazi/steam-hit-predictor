@@ -7,168 +7,104 @@
     - `raw_data/artermiloff_steam_games_dataset/`: March 2025 Steam games dataset (89,618 records).
     - `raw_data/fronkongames_steam_games_dataset/`: Complete Steam games archive (125,855 records).
     - Existing reference dataset: `raw_data/steam_games_cleaned/` (original 27,075 records).
-  - Built and executed [raw_data/merge_datasets.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/raw_data/merge_datasets.py) (and mirrored in [raw_data/_scripts/merge_datasets.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/raw_data/_scripts/merge_datasets.py)):
+  - Built and executed [raw_data/merge_datasets.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/raw_data/merge_datasets.py):
     - **Crainbramp Game Integration:** Integrated all games from `crainbramp_steam_dataset_2025` (`type == 'game'`, 150,275 games) and unioned with reference games from `steam_games_cleaned` for **153,163 total clean, non-null games**.
     - Relational metadata (`developer`, `publisher`, `genres`, `categories`) mapped using fast dictionary indexing across `crainbramp`'s auxiliary relation tables.
-    - Fully cross-filled ratings (`positive_ratings`, `negative_ratings`), `steamspy_tags`, `owners`, playtime (`average_playtime`, `median_playtime`), descriptions (`detailed_description`, `about_the_game`, `short_description`), and media metadata across `artermiloff`, `fronkongames`, and `steam_games_cleaned`.
-    - **Modular Columnar Split (`raw_data/dataset_attributes/`):** Partitioned column-by-column into individual CSV files inside `raw_data/dataset_attributes/`. Each file contains `['appid', <attribute>]` (51 attribute files).
+    - Fully cross-filled ratings, tags, owners, playtime, descriptions, and media metadata.
+    - **Modular Columnar Split (`raw_data/dataset_attributes/`):** Partitioned into 51 individual CSV files inside `raw_data/dataset_attributes/`.
     - Data card generated at [raw_data/dataset_attributes/DATA_CARD.md](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/raw_data/dataset_attributes/DATA_CARD.md).
 - **Phase 1: Modular Data Engineering & Refactored `ml-pipeline/` Architecture:**
-  - **Modular Pipeline Split:** Refactored monolithic preparation code into focused, maintainable, single-responsibility modules:
-    - [ml-pipeline/config.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/ml-pipeline/config.py): Constants, FX exchange rates, Steam rating tiers logic, and token delimiter parsing.
-    - [ml-pipeline/cleaner.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/ml-pipeline/cleaner.py): Attribute loading, HTML description unescaping and cleaning, price normalization, and strict data filtering.
-    - [ml-pipeline/feature_transformer.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/ml-pipeline/feature_transformer.py): `SteamFeatureTransformer` class for multi-label binarization, native categorical handling, and automated all-zero feature pruning.
-    - [ml-pipeline/data_prep.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/ml-pipeline/data_prep.py): High-level pipeline coordinator orchestrating feature engineering, ordered DataFrame construction, stratified 80/10/10 splitting, MinMaxScaler price scaling, saving, and loading.
-    - [ml-pipeline/generate_vibe_scores.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/ml-pipeline/generate_vibe_scores.py): Heuristic vibe score engine derived purely from metadata (zero textual description leakage).
-  - **Strict Entity & Volume Filtering:** Dropped rows missing `developer` or `publisher` entirely (no imputation), and filtered out games with fewer than 50 total reviews first (`total_reviews >= 50`), yielding **27,810 robust games**.
+  - **Modular Pipeline Split:** Refactored into [ml-pipeline/config.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/ml-pipeline/config.py), [ml-pipeline/cleaner.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/ml-pipeline/cleaner.py), [ml-pipeline/feature_transformer.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/ml-pipeline/feature_transformer.py), [ml-pipeline/data_prep.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/ml-pipeline/data_prep.py), and [ml-pipeline/generate_vibe_scores.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/ml-pipeline/generate_vibe_scores.py).
+  - **Strict Entity & Volume Filtering:** Dropped rows missing developer/publisher, filtered `total_reviews >= 50` yielding **27,810 robust games**.
   - **Target Variable `is_hit`:** Formed target label `is_hit = 1 if approval_rate >= 0.80 else 0`, yielding **15,552 Hits (55.9%)** and **12,258 Non-Hits (44.1%)**.
-  - **MinMax Scaled Price:** Replaced StandardScaler with `MinMaxScaler(feature_range=(0, 1))` fitted strictly on the train split, generating bounded `price_scaled` [0.0, 1.0] and serialized to [saved_models/ml_models/price_scaler.pkl](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/saved_models/ml_models/price_scaler.pkl).
-  - **Removal of Entity & Multi-label Counts:** Completely removed the 6 count features (`dev_game_count`, `pub_game_count`, `num_platforms`, `num_genres`, `num_categories`, `num_tags`) from the feature transformer, dataframe builder, and exported datasets, reducing the model feature space from 200 to 194.
-  - **Integer Casting for Discrete Counts & Ratings:**
-    - Converted float reviews and counts to regular integers: `positive_ratings`, `negative_ratings`, `total_reviews`, `achievements`, `required_age`, `english`, and all binary indicators (`platform_*`, `genre_*`, `cat_*`, `tag_*`, `is_hit`).
-    - True continuous columns preserved as floats: `price`, `price_scaled`, `approval_rate`, `hype_score`, `story_score`, `nostalgia_score`.
-  - **Structured Logical Column Ordering:**
-    - Ordered all columns in `cleaned_data/` splits into intuitive, cohesive groups:
-      1. Core Metadata & Identifiers (`appid`, `name`, `release_date`, `developer`, `publisher`, `platforms`, `primary_genre`)
-      2. Pricing (`currency`, `price`, `price_scaled`)
-      3. Attributes (`english`, `required_age`, `achievements`, `owners`)
-      4. Reference Strings (`genres`, `categories`, `steamspy_tags`)
-      5. Continuous Vibe Scores (`hype_score`, `story_score`, `nostalgia_score`)
-      6. Multi-hot Platform Indicators (`platform_windows`, `platform_mac`, `platform_linux`)
-      7. Multi-hot Genre Indicators (`genre_*`)
-      8. Multi-hot Category Indicators (`cat_*`)
-      9. Multi-hot Tag Indicators (`tag_*`)
-      10. Review Telemetry (`positive_ratings`, `negative_ratings`, `total_reviews`, `approval_rate`, `rating_text`)
-      11. Target (`is_hit` as the final column).
-  - **Strict Ascending Sort by `appid`:** Verified `appid.is_monotonic_increasing == True` across `train`, `valid`, and `test` splits, with exact 1-to-1 row alignment between `games.csv` and `games_descriptions.csv`.
+  - **MinMax Scaled Price:** Replaced StandardScaler with `MinMaxScaler(feature_range=(0, 1))` fitted strictly on train split, serialized to [saved_models/ml_models/price_scaler.pkl](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/saved_models/ml_models/price_scaler.pkl).
+  - **Feature Space:** 194 model features (removed 6 redundant count columns).
+  - **Integer Casting for Discrete Counts & Ratings:** Converted float reviews and counts to regular integers.
   - **Dataset Split Dimensions (`cleaned_data/`):**
     - `cleaned_data/train/`: `games.csv` (22,248 rows, 209 cols, 194 model features, target `is_hit` at end) and `games_descriptions.csv` (22,248 rows, 5 cols).
     - `cleaned_data/valid/`: `games.csv` (2,781 rows, 209 cols, 194 model features) and `games_descriptions.csv` (2,781 rows, 5 cols).
     - `cleaned_data/test/`: `games.csv` (2,781 rows, 209 cols, 194 model features) and `games_descriptions.csv` (2,781 rows, 5 cols).
-- **Streamlined XGBoost Classifier with Feature Exemption ([ml-pipeline/xgboost_train.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/ml-pipeline/xgboost_train.py)):**
-  - **Feature Exemption Control:** Added `exempt_features` argument and `--exempt-features` CLI parameter (supporting exact column names and wildcard patterns like `tag_*` or `price_scaled`).
-  - **Native Categorical Support:** Trained with `enable_categorical=True` and `tree_method='hist'` on 4 native categorical columns (`developer`, `publisher`, `platforms`, `primary_genre`).
-  - **Holdout Test Set Evaluation (2,781 games, 194 features):**
-    - **Accuracy:** **96.26%** (2,677 / 2,781 correct predictions)
-    - **Precision:** **95.43%**
-    - **Recall:** **98.01%** (1,524 / 1,555 hits detected)
-    - **F1-Score:** **96.70%**
-    - **Validation Logloss:** **0.1096** (early stopping best iteration: 299)
-    - **Top Predictors:** `nostalgia_score` (0.1729), `genre_massively_multiplayer` (0.0959), `cat_multi_player` (0.0716), `story_score` (0.0612), `hype_score` (0.0520), `primary_genre` (0.0367), `cat_mmo` (0.0341), `genre_casual` (0.0339), `genre_free_to_play` (0.0300), `publisher` (0.0267).
-  - Saved updated model artifact to [saved_models/ml_models/xgboost_hit_predictor.pkl](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/saved_models/ml_models/xgboost_hit_predictor.pkl).
+  - **Streamlined XGBoost Classifier ([ml-pipeline/xgboost_train.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/ml-pipeline/xgboost_train.py)):**
+    - **Holdout Test Set Evaluation (2,781 games, 194 features):**
+      - **Accuracy:** **96.26%** (2,677 / 2,781 correct predictions)
+      - **Precision:** **95.43%**
+      - **Recall:** **98.01%** (1,524 / 1,555 hits detected)
+      - **F1-Score:** **96.70%**
+      - **Validation Logloss:** **0.1096**
+    - Saved model artifact to [saved_models/ml_models/xgboost_hit_predictor.pkl](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/saved_models/ml_models/xgboost_hit_predictor.pkl).
 - **Phase 2: LLM Baselines & Containerization:**
-  - Created `.env` file for Hugging Face authentication (`HF_TOKEN`).
-  - Implemented `llm-pipeline/inference_baseline.py` using **Qwen3.5-0.8B** on GPU (`cuda:0`):
-    - Real-time RAM & VRAM tracking after every generation.
-    - Exports metrics to `llm-pipeline/baseline_results/inference_baseline_results.json` (100.0% validity rate, 5.328s avg latency, ~1.97 GB Process RAM, ~1.41 GB GPU VRAM).
-  - Implemented `llm-pipeline/prompting_baseline.py`:
-    - Benchmarked **Zero-Shot**, **Few-Shot**, and **Chain-of-Thought (CoT)** prompting strategies.
-    - Saved benchmark metrics to `llm-pipeline/baseline_results/prompting_baseline_results.json`.
-  - **Adapted `llm-pipeline` to Three-Split `cleaned_data/` Dataset Architecture:**
-    - Seamlessly loads and merges game attributes and descriptions directly from `cleaned_data/` (`train/`, `valid/`, `test/` pairing `games.csv` with `games_descriptions.csv` on `appid`).
+  - Implemented `llm-pipeline/inference_baseline.py` using **Qwen3.5-0.8B** on GPU (`cuda:0`).
+  - Implemented `llm-pipeline/prompting_baseline.py` (Zero-Shot, Few-Shot, Chain-of-Thought).
   - Created root [requirements.txt](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/requirements.txt) and root [Dockerfile](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/Dockerfile).
 - **Phase 3: Optimized 8-Bit QLoRA Fine-Tuning & Standalone Kaggle Notebook Execution ([llm-pipeline/qlora_training.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/llm-pipeline/qlora_training.py), [kaggle_upload_dataset.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/kaggle_upload_dataset.py)):**
-  - **Standalone Kaggle Notebook & Local Execution:**
-    - Stripped all remote Kaggle kernel launching/offloading logic (`launch_training_on_kaggle`, `pull_kaggle_kernel_output`, Kaggle credentials checking) from `qlora_training.py`.
-    - Removed `KAGGLE_API_TOKEN` and Kaggle API keys from `.env`.
-    - Made `qlora_training.py` completely standalone so it runs locally or can be copied directly into a Kaggle notebook cell or script without external CLI or cloud management dependencies.
-    - **Flexible Dataset Resolution (`resolve_data_dir`):** Accepts direct local paths (`cleaned_data`), direct Kaggle mount paths (e.g. `/kaggle/input/steam-hit-predictor-cleaned-data`), Kaggle parent input folder (`/kaggle/input`), or auto-discovers mounted dataset splits inside `/kaggle/input`.
-    - **Kaggle Writable Output Routing (`resolve_output_dir`):** Dynamically detects Kaggle runtime via `is_running_on_kaggle()` and routes outputs to `/kaggle/working/qwen_steam_vibe_8bit` ensuring write access and easy one-click download of fine-tuned adapter weights from the Kaggle UI.
-    - **Full Dataset Training by Default:** Trains on the entire 22,248 games in `train/` across 5 epochs with batch size 2, gradient accumulation 4, and modified `top_p=0.9` nucleus sampling.
-    - **Streamlined Command-Line Interface:** Clean, focused CLI controls:
-      - `--data-dir` (default: `cleaned_data`, or `/kaggle/input/<dataset-slug>`)
-      - `--output-dir` (default: `saved_models/llm_adapters/qwen_steam_vibe_8bit`)
-      - `--epochs` (default: 5)
-      - `--batch-size` (default: 2)
-      - `--max-train-samples` (default: None for full training set)
-      - `--max-eval-samples` (default: 20)
-  - **Kaggle Dataset Uploader ([kaggle_upload_dataset.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/kaggle_upload_dataset.py)):**
-    - Standalone utility to upload the local `cleaned_data/` dataset splits to Kaggle Datasets and print the exact Kaggle Web URL and in-kernel mount path:
-      - **Kaggle Web URL:** `https://www.kaggle.com/datasets/kareemghazi/steam-hit-predictor-cleaned-data`
-      - **Kaggle In-Kernel Path:** `/kaggle/input/steam-hit-predictor-cleaned-data`
-  - **BitsAndBytes 8-Bit Quantization:** Loaded base model `Qwen/Qwen3.5-0.8B` in 8-bit mode (`BitsAndBytesConfig(load_in_8bit=True)`), verified running on NVIDIA GeForce RTX 4060 Laptop GPU.
-  - **Hardware-Accelerated Mixed Precision:** Enabled `bf16=True` in `SFTConfig` and model loading, utilizing RTX 4060's native bfloat16 tensor cores for accelerated training and lower memory overhead.
-  - **Vectorized Dataset Pre-formatting:** Replaced sequential row-by-row iteration with Hugging Face `Dataset.map(batched=True, num_proc=4)`, eliminating CPU bottleneck and parallelizing prompt construction.
-  - **Batched Evaluation with `torch.compile()` Acceleration:** Implemented left-padding batched generation (`eval_batch_size=4`) and PyTorch 2.0 `torch.compile()` kernel acceleration, dropping per-game generation latency from ~22s down to **4.20s / game** (>5x speedup).
-  - **Modified Nucleus Sampling (`top_p`):** Configured and modified the `top_p=0.9` parameter (with `temperature=0.7`, `do_sample=True`) across model `generation_config` and batched generation sampling.
-  - **LoRA Configuration:** Attached Low-Rank Adaptation using PEFT with hyperparameters: $r=16, \alpha=32$, dropout=0.05, target modules `["q_proj", "k_proj", "v_proj", "o_proj"]`, configuring 1,081,344 trainable parameters (0.14% of the base model).
-  - **Training Loop with SFTTrainer:** Executed fine-tuning on GPU with `SFTTrainer` and `SFTConfig` (batch size 2, gradient accumulation 4, learning rate 2e-4, `bf16=True`). Final training loss dropped to 1.2015, with token accuracy reaching 84.3%.
-  - **Adapter Persistence:** Saved fine-tuned LoRA adapter weights and tokenizer to [saved_models/llm_adapters/](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/saved_models/llm_adapters/) and [saved_models/llm_adapters/qwen_steam_vibe_8bit/](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/saved_models/llm_adapters/qwen_steam_vibe_8bit/).
-  - **Before vs After Holdout Evaluation Benchmark (20 holdout test games):**
-    - **JSON Schema Validity:** 100.0% -> 100.0%
-    - **Mean Absolute Error (MAE):** 1.98 -> **1.44** (0.54 MAE reduction vs consensus)
-    - **Accuracy (+/- 2.0 tolerance):** 58.3% -> **73.3%** (+15.0% improvement)
-    - **Per-Game Evaluation Latency:** **4.201s** (Batched x4 with `torch.compile()`)
-    - Metrics serialized to [llm-pipeline/baseline_results/qlora_training_results.json](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/llm-pipeline/baseline_results/qlora_training_results.json).
-
+  - Fine-tuned `Qwen/Qwen3.5-0.8B` in 8-bit mode with LoRA ($r=16, \alpha=32$, dropout=0.05) and `bf16=True`.
+  - Vectorized dataset pre-formatting with `Dataset.map(batched=True)` and batched eval with `torch.compile()` (4.20s/game).
+  - Uploaded dataset to Kaggle: `https://www.kaggle.com/datasets/kareemghazi/steam-hit-predictor-cleaned-data`.
+  - Saved adapter weights to [saved_models/llm_adapters/qwen_steam_vibe_8bit/](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/saved_models/llm_adapters/qwen_steam_vibe_8bit/).
+  - Benchmark improvement: MAE reduced from 1.98 to **1.44**, accuracy raised from 58.3% to **73.3%**.
 - **Phase 4: The FastAPI Backend ([backend/main.py](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/backend/main.py), [backend/requirements.txt](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/backend/requirements.txt)):**
-  - Built production-ready, asynchronous FastAPI backend server uniting QLoRA LLM inference and the XGBoost classifier.
-  - **Memory Initialization:**
-    - Loads all 27,810 historical games from `cleaned_data/` (`train`, `valid`, `test`) into a fast, in-memory Pandas dataframe with full metadata and descriptions.
-    - Loads the trained XGBoost classifier artifact (`xgboost_hit_predictor.pkl`) and `SteamFeatureTransformer` (194 active model features).
-    - Loads `price_scaler.pkl` (`MinMaxScaler`).
-    - Initializes the fine-tuned 8-bit QLoRA adapter (`Qwen3.5-0.8B` with `PeftModel`) on CUDA GPU (with safe heuristic fallback).
-  - **Endpoints Implemented & Tested:**
-    - `POST /predict`: Accepts new game concept parameters, dynamically generates `hype_score`, `story_score`, and `nostalgia_score` via the local QLoRA model, runs feature transformation, computes XGBoost Hit/Flop prediction & probability, projects Steam review tier, and returns 3 similar historical games.
-    - `GET /similar`: Finds top 3 historical games matching by genre, price bracket (Free, Budget <$10, Mid-Tier $10-$30, Premium $30+), and rating tier.
-    - `GET /games`: Paginated, searchable, and filterable endpoint across the 27,810 cleaned games to power Phase 5's Dataset Explorer.
-    - `GET /metadata`: Provides dynamic dropdown options (genres, rating tiers, price brackets).
-    - `GET /` & `GET /health`: Health checks and model telemetry.
-  - **CORS Middleware:** Enabled full cross-origin resource sharing (`allow_origins=["*"]`) for seamless React frontend integration.
-  - **End-to-End Test Verification:** Verified via FastAPI `TestClient` with all endpoints returning HTTP 200 and accurate predictions.
+  - Built production FastAPI server loading all 27,810 games in memory, XGBoost model, price scaler, and QLoRA LLM adapter.
+  - Endpoints: `POST /predict`, `GET /similar`, `GET /games`, `GET /metadata`, `GET /health`.
+  - Verified live inference with FastAPI TestClient.
+- **Phase 5: The React Frontend Dashboard ([frontend/](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/frontend/)):**
+  - Initialized React 18 + Vite 5 frontend project with `lucide-react` icons.
+  - Implemented custom Steam dark theme styling in [frontend/src/index.css](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/frontend/src/index.css) (`#0a0e17`, `#131b29`, `#182335`, Steam blue `#66c0f4`, green hits `#10b981`, red flops `#ef4444`).
+  - Built [frontend/src/components/DatasetExplorer.jsx](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/frontend/src/components/DatasetExplorer.jsx):
+    - Browses, searches, filters, and paginates through all 27,810 games in `cleaned_data/`.
+    - Highlights `rating_text` Steam rating tiers with color-coded badges (Overwhelmingly Positive, Very Positive, Mixed, etc.).
+    - Filter controls for genre, hit/flop status, and text search.
+    - One-click "Use in Developer Studio" action to transfer game data into the prediction form.
+  - Built [frontend/src/components/PredictionStudio.jsx](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/frontend/src/components/PredictionStudio.jsx):
+    - Inputs for title, store description pitch, developer, publisher, genre, tags, categories, platforms, price, and achievements.
+    - Quick Archetype Presets (Metroidvania Masterpiece, Retro Boomer Shooter, Generic Zombie Survival, Cozy Farming Sim).
+    - Autonomous AI Vibe Mode (QLoRA LLM auto-extraction) vs Manual Vibe Score Override sliders.
+    - Submits to `POST /predict` with live loading indicators.
+  - Built [frontend/src/components/ResultsPane.jsx](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/frontend/src/components/ResultsPane.jsx):
+    - Glowing Commercial Hit (emerald) vs Market Flop (red) hero banner with hit probability percentage and confidence score.
+    - Projected Steam rating tier badge and inference duration telemetry.
+    - Visual progress meters for LLM vibe scores (Hype, Story, Nostalgia) with source attribution badge.
+    - Renders 3 closest historical comparables from the backend with review metrics, price, and descriptions.
+  - Built [frontend/src/App.jsx](file:///c:/Users/kareemghazi/Desktop/steam-hit-predictor/frontend/src/App.jsx):
+    - Steam-styled header with real-time backend connection status badge (`GET /health`).
+    - Tab switching between Developer Studio and Dataset Explorer.
+    - Cohesive state management and responsive layout.
+  - Verified production build: `npm run build` completed successfully in 5.30s (0 errors).
 
 ## 2. Dependencies & Runtime
-- `fastapi` 0.165.0
-- `uvicorn` 0.54.0
-- `pydantic` 2.13.5
-- `httpx` 0.28.1
-- `pytest` 9.2.0
-- `bitsandbytes` 0.50.2
-- `peft` 0.21.2
-- `trl` 1.17.1
-- `datasets` 5.1.0
-- `torch` (CUDA 12.1+ compatible, running on RTX 4060 Laptop GPU)
-- `transformers` 5.18.0
-- `accelerate` 1.15.0
-- `xgboost` 2.1.4
-- `scikit-learn` 1.6.1
-- `pandas` 2.2.3
-- `numpy` 2.2.3
-- `python-dotenv` 1.2.4
+- **Backend:** `fastapi` 0.165.0, `uvicorn` 0.54.0, `pydantic` 2.13.5, `httpx` 0.28.1, `pytest` 9.2.0, `torch` (CUDA 12.1+), `transformers` 5.18.0, `peft` 0.21.2, `bitsandbytes` 0.50.2, `xgboost` 2.1.4, `scikit-learn` 1.6.1, `pandas` 2.2.3, `numpy` 2.2.3.
+- **Frontend:** Node.js v24.11.0, npm 11.6.4, `react` ^18.3.1, `react-dom` ^18.3.1, `lucide-react` ^1.16.0, `vite` ^5.4.21.
 
 ## 3. Current Data Flow
 ```text
-React Frontend / User Request
-           │
-           │  POST /predict (JSON: name, description, genres, price, platforms, ...)
-           ▼
-[backend/main.py] (FastAPI Server)
-           │
-           ├──► 1. QLoRA Adapter (Qwen3.5-0.8B on GPU)
-           │       - Evaluates description & concept
-           │       - Extracts vibe scores: {hype, story, nostalgia}
-           │
-           ├──► 2. Feature Transformer (SteamFeatureTransformer)
-           │       - Multi-label binarization (genres, categories, tags)
-           │       - Platform multi-hot & native categoricals
-           │       - Assembles exact 194 training feature vector
-           │
-           ├──► 3. XGBoost Classifier (xgboost_hit_predictor.pkl)
-           │       - Evaluates 194 features
-           │       - Predicts Hit (1) / Flop (0) and probability
-           │       - Projects Steam rating tier
-           │
-           └──► 4. Similarity Engine (27,810 Historical Games in Memory)
-                   - Matches genre, price tier & rating tier
-                   - Returns top 3 most relevant reference games
-           │
-           ▼
-JSON Response (Hit/Flop, Probability, Vibe Scores, 3 Similar Games)
+React Frontend (Vite :5173)
+   │
+   ├──► [DatasetExplorer.jsx] ─── GET /games, GET /metadata ───► FastAPI Backend (:8000)
+   │         ▲                                                        │
+   │         └── Click "Use in Developer Studio" ─────────────────────┘
+   │
+   └──► [PredictionStudio.jsx] ── POST /predict (Payload) ─────► FastAPI Backend (:8000)
+             │                                                        │
+             │                                                        ├──► QLoRA LLM (Qwen3.5-0.8B)
+             │                                                        ├──► Transformer (194 feats)
+             │                                                        ├──► XGBoost (96.3% Acc)
+             │                                                        └──► Historical Memory (27.8k)
+             ▼                                                        │
+        [ResultsPane.jsx] ◄──── JSON Prediction Result ───────────────┘
+          - Hit/Flop Banner + Probability %
+          - Projected Rating Tier Badge
+          - LLM Vibe Scores Breakdown
+          - 3 Historical Similar Games
 ```
 
 ## 4. Next Step
-- **Target Component:** Phase 5: The React Frontend Dashboard (`frontend/`)
+- **Target Component:** Phase 6: Testing & Detailed Documentation (`tests/` and `docs/`)
 - **Goal:**
-  - Build `DatasetExplorer.jsx` to display and filter `cleaned_data/` games in a UI grid, highlighting `rating_text`.
-  - Build `PredictionStudio.jsx` (Developer Studio) to accept game parameters and send requests to `POST /predict`.
-  - Build `ResultsPane.jsx` / Dashboard in `App.jsx` to render the XGBoost prediction, vibe scores, and 3 similar games.
+  - Create `tests/test_backend.py` for comprehensive FastAPI unit tests.
+  - Create `tests/App.test.jsx` for React component unit tests.
+  - Create root `README.md` with complete setup and execution guide.
+  - Create markdown documentation files in `docs/`:
+    - `docs/architecture.md`
+    - `docs/ml_pipeline.md`
+    - `docs/llm_pipeline.md`
+    - `docs/backend.md`
+    - `docs/frontend.md`

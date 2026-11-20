@@ -1,0 +1,165 @@
+/* Steam Hit Predictor - Global Stylesheet */
+:root {
+  --bg-primary: #0a0e17;
+  --bg-secondary: #131b29;
+  --bg-card: #182335;
+  --bg-card-hover: #1f2d42;
+  --border-subtle: #24344d;
+  --border-focus: #3b82f6;
+  
+  --steam-blue: #66c0f4;
+  --steam-blue-glow: rgba(102, 192, 244, 0.25);
+  --steam-dark-blue: #1b2838;
+  --steam-accent: #2a475e;
+  
+  --hit-green: #10b981;
+  --hit-green-glow: rgba(16, 185, 129, 0.3);
+  --flop-red: #ef4444;
+  --flop-red-glow: rgba(239, 68, 68, 0.3);
+  
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--steam-accent);
+}
+
+/* Glassmorphism & Panel Styling */
+.panel-card {
+  background: linear-gradient(180deg, rgba(24, 35, 53, 0.95) 0%, rgba(19, 27, 41, 0.95) 100%);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+}
+
+.panel-card:hover {
+  border-color: rgba(102, 192, 244, 0.35);
+}
+
+/* Steam Rating Tier Badges */
+.badge-overwhelmingly-positive {
+  background: rgba(102, 192, 244, 0.15);
+  color: #66c0f4;
+  border: 1px solid rgba(102, 192, 244, 0.4);
+}
+
+.badge-very-positive, .badge-positive {
+  background: rgba(76, 149, 196, 0.15);
+  color: #79b8e0;
+  border: 1px solid rgba(76, 149, 196, 0.4);
+}
+
+.badge-mostly-positive {
+  background: rgba(85, 122, 149, 0.15);
+  color: #9cbacf;
+  border: 1px solid rgba(85, 122, 149, 0.4);
+}
+
+.badge-mixed {
+  background: rgba(191, 162, 107, 0.15);
+  color: #d1b87b;
+  border: 1px solid rgba(191, 162, 107, 0.4);
+}
+
+.badge-mostly-negative, .badge-overwhelmingly-negative {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+/* Animations */
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px var(--steam-blue-glow);
+  }
+  50% {
+    box-shadow: 0 0 30px var(--steam-blue-glow);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2.5s infinite ease-in-out;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Form Elements */
+input, select, textarea {
+  background-color: rgba(11, 16, 26, 0.85);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.925rem;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--steam-blue);
+  box-shadow: 0 0 0 3px var(--steam-blue-glow);
+}
+
+/* Range Slider */
+input[type=range] {
+  padding: 0;
+  height: 6px;
+  background: var(--bg-primary);
+  border-radius: 3px;
+  border: none;
+}
+
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 18px;
+  width: 18px;
+  border-radius: 50%;
+  background: var(--steam-blue);
+  cursor: pointer;
+  box-shadow: 0 0 8px var(--steam-blue);
+}
+
+/* Grid Layouts */
+.grid-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.25rem;
+}

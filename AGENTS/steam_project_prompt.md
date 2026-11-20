@@ -142,9 +142,9 @@ Please begin with Phase 1. Output the code, explain it briefly, and then output 
 
 #### Phase 5: The React Frontend Dashboard (frontend/)
 
-* [ ] Build a **Dataset Explorer** component to display the `cleaned_data/` games in a UI grid, highlighting the newly engineered `rating_text`.
-* [ ] Build a **Developer Studio** component to accept new game parameters.
-* [ ] Build a **Results Pane** to display the XGBoost Hit/Flop prediction, LLM vibe scores, and the 3 similar historical games pulled from the backend.
+* [x] Build a **Dataset Explorer** component to display the `cleaned_data/` games in a UI grid, highlighting the newly engineered `rating_text`.
+* [x] Build a **Developer Studio** component to accept new game parameters.
+* [x] Build a **Results Pane** to display the XGBoost Hit/Flop prediction, LLM vibe scores, and the 3 similar historical games pulled from the backend.
 
 #### Phase 6: Testing & Detailed Documentation (tests/ & docs/)
 
