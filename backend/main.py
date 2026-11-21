@@ -23,6 +23,13 @@ from fastapi import FastAPI, HTTPException, Query, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+import database
+from database import (
+    init_db, list_private_games, get_private_game,
+    create_private_game, update_private_game,
+    save_game_prediction, delete_private_game
+)
+
 # Ensure root, ml-pipeline, and llm-pipeline are in sys.path
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(BACKEND_DIR, ".."))
@@ -326,6 +333,9 @@ async def lifespan(app: FastAPI):
     print("==================================================================")
     start_t = time.time()
     
+    # 0. Initialize SQLite Database
+    init_db()
+    
     # 1. Load Cleaned Dataset into Memory
     state.dataset_df = load_all_cleaned_splits()
     
@@ -384,6 +394,39 @@ class GamePredictionRequest(BaseModel):
     required_age: int = Field(default=0, ge=0, example=0, description="Required minimum age")
     achievements: int = Field(default=0, ge=0, example=15, description="Number of Steam achievements")
     vibe_scores: Optional[VibeScores] = Field(default=None, description="Optional manual override of vibe scores")
+
+
+class PrivateGameCreate(BaseModel):
+    name: str = Field(..., description="Title of the video game concept")
+    description: str = Field(..., description="Detailed game concept description")
+    developer: Optional[str] = Field(default="Independent Studio")
+    publisher: Optional[str] = Field(default="Independent Studio")
+    primary_genre: Optional[str] = Field(default="Action")
+    genres: Optional[str] = Field(default="Action;Indie")
+    categories: Optional[str] = Field(default="Single-player;Steam Achievements")
+    steamspy_tags: Optional[str] = Field(default="Action;Indie;Difficult")
+    platforms: Optional[str] = Field(default="windows")
+    price: Optional[float] = Field(default=19.99, ge=0.0)
+    english: Optional[int] = Field(default=1)
+    required_age: Optional[int] = Field(default=0)
+    achievements: Optional[int] = Field(default=0)
+    username: Optional[str] = Field(default="guest")
+
+
+class PrivateGameUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    developer: Optional[str] = None
+    publisher: Optional[str] = None
+    primary_genre: Optional[str] = None
+    genres: Optional[str] = None
+    categories: Optional[str] = None
+    steamspy_tags: Optional[str] = None
+    platforms: Optional[str] = None
+    price: Optional[float] = None
+    english: Optional[int] = None
+    required_age: Optional[int] = None
+    achievements: Optional[int] = None
 
 
 class SimilarGame(BaseModel):
@@ -535,52 +578,62 @@ def health_check():
     return {"status": "ok", "llm_status": state.llm_status}
 
 
-@app.post("/predict", response_model=PredictionResponse, tags=["Inference"])
-def predict_game_hit(req: GamePredictionRequest):
+def execute_game_prediction(game_data: Dict[str, Any], vibe_scores_override: Optional[Dict[str, float]] = None) -> PredictionResponse:
     """
-    Accepts game concept data, extracts vibe scores via QLoRA LLM adapter,
-    transforms tabular attributes into 194 model features, predicts Hit/Flop with XGBoost,
-    and returns 3 similar historical games.
+    Executes the complete dual ML+LLM inference pipeline on game data dictionary.
     """
     start_t = time.time()
 
     if state.xgb_model is None or state.feature_transformer is None:
         raise HTTPException(status_code=500, detail="XGBoost model is not initialized.")
 
+    name = game_data.get("name", "Untitled Project")
+    description = game_data.get("description", "")
+    developer = game_data.get("developer", "Independent Studio")
+    publisher = game_data.get("publisher", "Independent Studio")
+    genres = game_data.get("genres", "Action;Indie")
+    categories = game_data.get("categories", "Single-player;Steam Achievements")
+    steamspy_tags = game_data.get("steamspy_tags", "")
+    platforms = game_data.get("platforms", "windows")
+    price = float(game_data.get("price", 19.99))
+    english = int(game_data.get("english", 1))
+    required_age = int(game_data.get("required_age", 0))
+    achievements = int(game_data.get("achievements", 0))
+
     # 1. Resolve Primary Genre
-    primary_genre = req.primary_genre
-    if not primary_genre or not primary_genre.strip():
-        primary_genre = req.genres.split(";")[0].split(",")[0].strip() or "Indie"
+    primary_genre = game_data.get("primary_genre")
+    if not primary_genre or not str(primary_genre).strip():
+        primary_genre = genres.split(";")[0].split(",")[0].strip() or "Indie"
 
     # 2. Extract or apply vibe scores
-    if req.vibe_scores is not None:
+    if vibe_scores_override is not None:
         vibe_dict = {
-            "hype_score": req.vibe_scores.hype_score,
-            "story_score": req.vibe_scores.story_score,
-            "nostalgia_score": req.vibe_scores.nostalgia_score
+            "hype_score": float(vibe_scores_override.get("hype_score", 7.0)),
+            "story_score": float(vibe_scores_override.get("story_score", 7.0)),
+            "nostalgia_score": float(vibe_scores_override.get("nostalgia_score", 7.0))
         }
         vibe_source = "user_override"
     else:
         vibe_dict, vibe_source = extract_vibe_scores(
-            game_name=req.name,
-            genres=req.genres,
-            description=req.description
+            game_name=name,
+            genres=genres,
+            description=description
         )
 
     # 3. Assemble single-sample DataFrame for transformer
     sample_dict = {
-        "name": req.name,
-        "developer": req.developer,
-        "publisher": req.publisher,
+        "name": name,
+        "developer": developer,
+        "publisher": publisher,
         "primary_genre": primary_genre,
-        "genres": req.genres,
-        "categories": req.categories or "",
-        "steamspy_tags": req.steamspy_tags or "",
-        "platforms": req.platforms or "windows",
-        "price": req.price,
-        "english": req.english,
-        "required_age": req.required_age,
-        "achievements": req.achievements,
+        "genres": genres,
+        "categories": categories or "",
+        "steamspy_tags": steamspy_tags or "",
+        "platforms": platforms or "windows",
+        "price": price,
+        "english": english,
+        "required_age": required_age,
+        "achievements": achievements,
         "hype_score": vibe_dict["hype_score"],
         "story_score": vibe_dict["story_score"],
         "nostalgia_score": vibe_dict["nostalgia_score"]
@@ -623,16 +676,16 @@ def predict_game_hit(req: GamePredictionRequest):
     # 7. Find 3 Similar Historical Games
     similar = find_similar_games(
         genre=primary_genre,
-        price=req.price,
+        price=price,
         rating_text=rating_tier,
         n=3,
-        exclude_name=req.name
+        exclude_name=name
     )
 
     duration_ms = (time.time() - start_t) * 1000.0
 
     return PredictionResponse(
-        game_name=req.name,
+        game_name=name,
         is_hit=pred_val,
         prediction_label=label,
         hit_probability=round(proba_val, 4),
@@ -644,6 +697,74 @@ def predict_game_hit(req: GamePredictionRequest):
         similar_games=[SimilarGame(**g) for g in similar],
         inference_duration_ms=round(duration_ms, 2)
     )
+
+
+@app.post("/predict", response_model=PredictionResponse, tags=["Inference"])
+def predict_game_hit(req: GamePredictionRequest):
+    """
+    Accepts game concept data, extracts vibe scores via QLoRA LLM adapter,
+    transforms tabular attributes into 194 model features, predicts Hit/Flop with XGBoost,
+    and returns 3 similar historical games.
+    """
+    vibe_override = req.vibe_scores.model_dump() if req.vibe_scores else None
+    return execute_game_prediction(req.model_dump(), vibe_scores_override=vibe_override)
+
+
+# ---------------------------------------------------------------------------
+# Private Games SQLite Endpoints
+# ---------------------------------------------------------------------------
+@app.get("/api/private-games", tags=["Private Games"])
+def get_user_private_games(username: Optional[str] = Query(None, description="Username to filter games")):
+    """Returns private studio projects saved in the SQLite database."""
+    return list_private_games(username=username)
+
+
+@app.post("/api/private-games", tags=["Private Games"])
+def create_new_private_game(req: PrivateGameCreate):
+    """Creates a new private studio project in SQLite."""
+    return create_private_game(req.model_dump(), username=req.username or "guest")
+
+
+@app.get("/api/private-games/{game_id}", tags=["Private Games"])
+def get_single_private_game(game_id: int):
+    """Retrieves a single private project by its SQLite ID."""
+    game = get_private_game(game_id)
+    if not game:
+        raise HTTPException(status_code=404, detail="Private game not found.")
+    return game
+
+
+@app.put("/api/private-games/{game_id}", tags=["Private Games"])
+def update_existing_private_game(game_id: int, req: PrivateGameUpdate):
+    """Updates parameters for an existing private project."""
+    updated = update_private_game(game_id, req.model_dump(exclude_unset=True))
+    if not updated:
+        raise HTTPException(status_code=404, detail="Private game not found.")
+    return updated
+
+
+@app.delete("/api/private-games/{game_id}", tags=["Private Games"])
+def delete_existing_private_game(game_id: int):
+    """Deletes a private project from the SQLite database."""
+    success = delete_private_game(game_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Private game not found.")
+    return {"status": "deleted", "id": game_id}
+
+
+@app.post("/api/private-games/{game_id}/analyze", response_model=PredictionResponse, tags=["Private Games"])
+def analyze_private_game(game_id: int):
+    """
+    Executes full AI & ML prediction on a stored private game from SQLite,
+    persists the analysis result in the SQLite database, and returns the forecast.
+    """
+    game = get_private_game(game_id)
+    if not game:
+        raise HTTPException(status_code=404, detail="Private game not found.")
+
+    prediction = execute_game_prediction(game)
+    save_game_prediction(game_id, prediction.model_dump())
+    return prediction
 
 
 @app.get("/similar", response_model=List[SimilarGame], tags=["Discovery"])

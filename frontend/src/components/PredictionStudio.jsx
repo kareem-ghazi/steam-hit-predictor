@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   Sparkles, Play, RotateCcw, AlertCircle, Check, Plus, X,
-  Gamepad2, Monitor, Apple, Terminal, DollarSign, Layers
+  Gamepad2, Monitor, Apple, Terminal, DollarSign, Layers,
+  Save, Trash2, FolderPlus, Database, CheckCircle2
 } from 'lucide-react';
 
 const API_BASE = 'http://127.0.0.1:8000';
@@ -28,88 +29,19 @@ const POPULAR_TAGS = [
   'Sci-fi', 'Fantasy', 'Cyberpunk', 'Space', 'Puzzle'
 ];
 
-// Benchmark Game Presets
-const PRESETS = [
-  {
-    name: 'Metroidvania Masterpiece (Hit Archetype)',
-    data: {
-      name: 'Crypt of the Hollow Sovereign',
-      description: 'An atmospheric hand-drawn 2D metroidvania through a ruined insect kingdom. Uncover deep forgotten lore, master fluid acrobatic combat, and challenge over 40 epic bosses in a haunting interconnected world with an orchestral soundtrack.',
-      developer: 'Team Moonstone',
-      publisher: 'Team Moonstone',
-      primary_genre: 'Action',
-      genres: ['Action', 'Indie', 'Adventure'],
-      categories: ['Single-player', 'Steam Achievements', 'Full controller support', 'Steam Cloud'],
-      steamspy_tags: ['Metroidvania', 'Souls-like', 'Difficult', 'Atmospheric', '2D', 'Indie'],
-      platforms: ['windows', 'mac', 'linux'],
-      price: 19.99,
-      english: 1,
-      required_age: 0,
-      achievements: 45
-    }
-  },
-  {
-    name: 'Retro 90s Boomer Shooter (Hit Archetype)',
-    data: {
-      name: 'Duskfall: Bloodline 1996',
-      description: 'Fast-paced retro 90s FPS boomer shooter with pixelated bloody action, strafe jumping, dual-wield shotguns, industrial metal soundtrack, and labyrinthine level design reminiscent of Quake and Doom.',
-      developer: 'Iron Pixel Studios',
-      publisher: 'New Blood Interactive',
-      primary_genre: 'Action',
-      genres: ['Action', 'Indie'],
-      categories: ['Single-player', 'Steam Achievements', 'Steam Cloud'],
-      steamspy_tags: ['Boomer Shooter', 'FPS', 'Pixel Art', 'Atmospheric', 'Fast-Paced', 'Action'],
-      platforms: ['windows', 'linux'],
-      price: 14.99,
-      english: 1,
-      required_age: 18,
-      achievements: 30
-    }
-  },
-  {
-    name: 'Story-Rich Cozy Farming Sim (Hit Archetype)',
-    data: {
-      name: 'Starlight Orchard Valley',
-      description: 'A cozy heartwarming narrative farming simulator. Inherit your grandmothers quaint countryside cottage, befriend quirky village townsfolk, uncover ancient forest spirits, and build your dream orchard.',
-      developer: 'Breeze Studio',
-      publisher: 'Chucklefish',
-      primary_genre: 'Simulation',
-      genres: ['Simulation', 'RPG', 'Casual', 'Indie'],
-      categories: ['Single-player', 'Steam Achievements', 'Full controller support'],
-      steamspy_tags: ['Cozy', 'Story Rich', 'Atmospheric', 'Crafting', '2D', 'Casual'],
-      platforms: ['windows', 'mac'],
-      price: 14.99,
-      english: 1,
-      required_age: 0,
-      achievements: 36
-    }
-  },
-  {
-    name: 'Generic Zombie Survival (Flop Archetype)',
-    data: {
-      name: 'Dead Survival Zombie Island Online',
-      description: 'Survive in an open world island filled with walking dead zombies. Collect wood and stone, build a base, find loot, and shoot zombies. Early access survival game with unity assets.',
-      developer: 'Asset Flip Games',
-      publisher: 'Asset Flip Games',
-      primary_genre: 'Action',
-      genres: ['Action', 'Adventure', 'Massively Multiplayer'],
-      categories: ['Multi-player', 'Online PvP'],
-      steamspy_tags: ['Survival', 'Open World', 'Crafting', 'FPS', 'Action'],
-      platforms: ['windows'],
-      price: 29.99,
-      english: 1,
-      required_age: 0,
-      achievements: 0
-    }
-  }
-];
-
 export default function PredictionStudio({
   initialGame,
+  currentUser,
   onPredictionComplete,
   descriptionAnalyzerActive,
   hitAnalyzerActive
 }) {
+  // Private Games from SQLite
+  const [privateGames, setPrivateGames] = useState([]);
+  const [selectedGameId, setSelectedGameId] = useState(null);
+  const [loadingProjects, setLoadingProjects] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
   const [formData, setFormData] = useState({
     name: 'Chronicles of Eldoria',
     description: 'An atmospheric dark-fantasy roguelike deckbuilder featuring deep branching narrative choices, procedural dungeons, hand-crafted pixel art, and deeply tactical turn-based card combat.',
@@ -130,7 +62,78 @@ export default function PredictionStudio({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Sync if initialGame is loaded from DatasetExplorer
+  // Fetch private games from SQLite backend
+  const fetchPrivateGames = async (autoSelectId = null) => {
+    setLoadingProjects(true);
+    try {
+      const username = currentUser?.username || 'guest';
+      const res = await fetch(`${API_BASE}/api/private-games?username=${encodeURIComponent(username)}`);
+      if (res.ok) {
+        const games = await res.json();
+        setPrivateGames(games);
+
+        // Auto select specified or first game
+        if (autoSelectId) {
+          const target = games.find((g) => g.id === autoSelectId);
+          if (target) loadGameIntoForm(target);
+        } else if (games.length > 0 && !selectedGameId) {
+          loadGameIntoForm(games[0]);
+        }
+      }
+    } catch (err) {
+      console.warn('Could not load private games:', err);
+    } finally {
+      setLoadingProjects(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPrivateGames();
+  }, [currentUser]);
+
+  // Load a private game from SQLite into form
+  const loadGameIntoForm = (game) => {
+    setSelectedGameId(game.id);
+    const parsedGenres = (game.genres || 'Action;Indie')
+      .split(';')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const parsedCats = (game.categories || 'Single-player')
+      .split(';')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const parsedTags = (game.steamspy_tags || '')
+      .split(';')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const parsedPlats = (game.platforms || 'windows')
+      .split(';')
+      .map((s) => s.trim().toLowerCase())
+      .filter(Boolean);
+
+    setFormData({
+      name: game.name || 'Untitled Game',
+      description: game.description || '',
+      developer: game.developer || 'Independent Studio',
+      publisher: game.publisher || 'Independent Studio',
+      primary_genre: game.primary_genre || parsedGenres[0] || 'Action',
+      genres: parsedGenres.length > 0 ? parsedGenres : ['Action', 'Indie'],
+      categories: parsedCats.length > 0 ? parsedCats : ['Single-player'],
+      steamspy_tags: parsedTags,
+      platforms: parsedPlats.length > 0 ? parsedPlats : ['windows'],
+      price: game.price !== undefined ? game.price : 19.99,
+      english: game.english !== undefined ? game.english : 1,
+      required_age: game.required_age || 0,
+      achievements: game.achievements || 0
+    });
+
+    // If this private game already has an analysis in SQLite, load it immediately!
+    if (game.latest_prediction && onPredictionComplete) {
+      onPredictionComplete(game.latest_prediction);
+    }
+  };
+
+  // Sync if initialGame is sent from DatasetExplorer
   useEffect(() => {
     if (initialGame) {
       const parsedGenres = (initialGame.genres || '')
@@ -150,20 +153,20 @@ export default function PredictionStudio({
         .map((s) => s.trim().toLowerCase())
         .filter(Boolean);
 
-      setFormData((prev) => ({
-        ...prev,
-        name: initialGame.name || prev.name,
-        description: initialGame.short_description || prev.description,
-        developer: initialGame.developer || prev.developer,
-        publisher: initialGame.publisher || prev.publisher,
-        primary_genre: initialGame.primary_genre || parsedGenres[0] || prev.primary_genre,
-        genres: parsedGenres.length > 0 ? parsedGenres : prev.genres,
-        categories: parsedCats.length > 0 ? parsedCats : prev.categories,
-        steamspy_tags: parsedTags.length > 0 ? parsedTags : prev.steamspy_tags,
-        platforms: parsedPlats.length > 0 ? parsedPlats : prev.platforms,
-        price: initialGame.price !== undefined ? initialGame.price : prev.price,
-        achievements: initialGame.achievements || prev.achievements
-      }));
+      // Create new private game in SQLite from this explorer game
+      handleCreateNewProject({
+        name: `${initialGame.name} (Custom Project)`,
+        description: initialGame.short_description || '',
+        developer: initialGame.developer || 'Independent Studio',
+        publisher: initialGame.publisher || 'Independent Studio',
+        primary_genre: initialGame.primary_genre || parsedGenres[0] || 'Action',
+        genres: parsedGenres.join(';') || 'Action;Indie',
+        categories: parsedCats.join(';') || 'Single-player',
+        steamspy_tags: parsedTags.join(';'),
+        platforms: parsedPlats.join(';') || 'windows',
+        price: initialGame.price !== undefined ? initialGame.price : 19.99,
+        achievements: initialGame.achievements || 0
+      });
     }
   }, [initialGame]);
 
@@ -179,7 +182,6 @@ export default function PredictionStudio({
     setFormData((prev) => {
       const exists = prev.genres.includes(genre);
       const updated = exists ? prev.genres.filter((g) => g !== genre) : [...prev.genres, genre];
-      // Ensure primary genre stays valid
       let newPrimary = prev.primary_genre;
       if (!updated.includes(newPrimary)) {
         newPrimary = updated[0] || 'Indie';
@@ -228,7 +230,7 @@ export default function PredictionStudio({
   const togglePlatform = (plat) => {
     setFormData((prev) => {
       const exists = prev.platforms.includes(plat);
-      if (exists && prev.platforms.length === 1) return prev; // Keep at least one platform
+      if (exists && prev.platforms.length === 1) return prev;
       const updated = exists ? prev.platforms.filter((p) => p !== plat) : [...prev.platforms, plat];
       return { ...prev, platforms: updated };
     });
@@ -238,15 +240,45 @@ export default function PredictionStudio({
     setFormData((prev) => ({ ...prev, price: p }));
   };
 
-  const handleLoadPreset = (preset) => {
-    setFormData({ ...preset.data });
+  // Create a new private game in SQLite DB
+  const handleCreateNewProject = async (overrideData = null) => {
+    setError(null);
+    try {
+      const payload = overrideData || {
+        name: `New Project ${privateGames.length + 1}`,
+        description: 'A new private video game concept designed for commercial release on Steam.',
+        developer: currentUser?.displayName || 'Independent Studio',
+        publisher: currentUser?.displayName || 'Independent Studio',
+        primary_genre: 'Action',
+        genres: 'Action;Indie',
+        categories: 'Single-player;Steam Achievements',
+        steamspy_tags: 'Action;Indie;Difficult',
+        platforms: 'windows',
+        price: 19.99,
+        english: 1,
+        required_age: 0,
+        achievements: 20,
+        username: currentUser?.username || 'guest'
+      };
+
+      const res = await fetch(`${API_BASE}/api/private-games`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) throw new Error('Failed to create private game in database.');
+      const newGame = await res.json();
+      await fetchPrivateGames(newGame.id);
+    } catch (err) {
+      setError(err.message || 'Error creating private game.');
+    }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+  // Save current edits to SQLite DB
+  const handleSaveToDatabase = async () => {
+    if (!selectedGameId) return;
     setError(null);
-
     try {
       const payload = {
         name: formData.name.trim(),
@@ -261,23 +293,100 @@ export default function PredictionStudio({
         price: parseFloat(formData.price) || 0.0,
         english: parseInt(formData.english, 10),
         required_age: parseInt(formData.required_age, 10) || 0,
-        achievements: parseInt(formData.achievements, 10) || 0,
-        vibe_scores: null // Default: automatically calculate using model
+        achievements: parseInt(formData.achievements, 10) || 0
       };
 
-      const res = await fetch(`${API_BASE}/predict`, {
-        method: 'POST',
+      const res = await fetch(`${API_BASE}/api/private-games/${selectedGameId}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
+      if (!res.ok) throw new Error('Failed to update project in database.');
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2500);
+      fetchPrivateGames(selectedGameId);
+    } catch (err) {
+      setError(err.message || 'Error saving project.');
+    }
+  };
+
+  // Delete private game from SQLite DB
+  const handleDeleteProject = async () => {
+    if (!selectedGameId) return;
+    if (!window.confirm('Delete this private game project from your database?')) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/private-games/${selectedGameId}`, {
+        method: 'DELETE'
+      });
+      if (!res.ok) throw new Error('Failed to delete game.');
+      setSelectedGameId(null);
+      await fetchPrivateGames();
+    } catch (err) {
+      setError(err.message || 'Error deleting game.');
+    }
+  };
+
+  // Submit prediction on the private game saved in SQLite
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      // 1. Ensure current edits are saved to SQLite first
+      let activeId = selectedGameId;
+      const gamePayload = {
+        name: formData.name.trim(),
+        description: formData.description.trim(),
+        developer: formData.developer.trim() || 'Independent Studio',
+        publisher: formData.publisher.trim() || 'Independent Studio',
+        primary_genre: formData.primary_genre,
+        genres: formData.genres.join(';'),
+        categories: formData.categories.join(';'),
+        steamspy_tags: formData.steamspy_tags.join(';'),
+        platforms: formData.platforms.join(';'),
+        price: parseFloat(formData.price) || 0.0,
+        english: parseInt(formData.english, 10),
+        required_age: parseInt(formData.required_age, 10) || 0,
+        achievements: parseInt(formData.achievements, 10) || 0,
+        username: currentUser?.username || 'guest'
+      };
+
+      if (!activeId) {
+        // Create new project in SQLite
+        const createRes = await fetch(`${API_BASE}/api/private-games`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(gamePayload)
+        });
+        const created = await createRes.json();
+        activeId = created.id;
+        setSelectedGameId(activeId);
+      } else {
+        // Update in SQLite
+        await fetch(`${API_BASE}/api/private-games/${activeId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(gamePayload)
+        });
+      }
+
+      // 2. Trigger analysis on the stored SQLite private game
+      const res = await fetch(`${API_BASE}/api/private-games/${activeId}/analyze`, {
+        method: 'POST'
+      });
+
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Prediction failed with status ${res.status}`);
+        throw new Error(errorData.detail || `Analysis failed with status ${res.status}`);
       }
 
       const predictionData = await res.json();
       onPredictionComplete(predictionData);
+
+      // Refresh list to show updated prediction status
+      fetchPrivateGames(activeId);
     } catch (err) {
       setError(err.message || 'Could not communicate with prediction service.');
     } finally {
@@ -286,40 +395,81 @@ export default function PredictionStudio({
   };
 
   return (
-    <div className="surface-card" style={{ padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {/* Studio Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <div style={{ background: 'rgba(102, 192, 244, 0.15)', color: 'var(--primary)', padding: '6px', borderRadius: 'var(--radius-sm)' }}>
-              <Gamepad2 size={20} />
-            </div>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff', letterSpacing: '-0.01em' }}>
-              Developer Studio
-            </h2>
+    <div className="surface-card" style={{ padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.4rem' }}>
+      {/* Top Bar: Private Studio Projects Manager (SQLite Database) */}
+      <div style={{ background: 'var(--surface-container-lowest)', padding: '12px 16px', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(102, 192, 244, 0.3)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Database size={16} style={{ color: 'var(--primary)' }} />
+            <span style={{ fontSize: '0.825rem', fontWeight: 700, color: '#fff' }}>
+              My Private Projects (SQLite Database)
+            </span>
+            <span className="font-mono" style={{ fontSize: '0.7rem', color: 'var(--outline)', background: 'rgba(51, 65, 85, 0.4)', padding: '2px 7px', borderRadius: 'var(--radius-sm)' }}>
+              {privateGames.length} Saved
+            </span>
           </div>
-          <p style={{ fontSize: '0.825rem', color: 'var(--on-surface-variant)' }}>
-            Configure game attributes & evaluate Steam market performance
-          </p>
+
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={() => handleCreateNewProject()}
+              className="btn-secondary"
+              style={{ padding: '5px 12px', fontSize: '0.78rem' }}
+            >
+              <Plus size={13} />
+              <span>New Private Game</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSaveToDatabase}
+              className="btn-secondary"
+              style={{ padding: '5px 12px', fontSize: '0.78rem', color: saveSuccess ? 'var(--status-positive-bright)' : 'var(--primary)' }}
+            >
+              {saveSuccess ? <CheckCircle2 size={13} /> : <Save size={13} />}
+              <span>{saveSuccess ? 'Saved' : 'Save Draft'}</span>
+            </button>
+
+            {privateGames.length > 1 && (
+              <button
+                type="button"
+                onClick={handleDeleteProject}
+                className="btn-secondary"
+                style={{ padding: '5px 10px', fontSize: '0.78rem', color: '#fb7185', borderColor: 'rgba(244, 63, 94, 0.3)' }}
+                title="Delete this project from database"
+              >
+                <Trash2 size={13} />
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Archetype Quick Select */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '0.78rem', color: 'var(--outline)', fontWeight: 500 }}>
-            Archetypes:
-          </span>
+        {/* Project Selector Dropdown */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <select
+            value={selectedGameId || ''}
             onChange={(e) => {
-              const idx = parseInt(e.target.value, 10);
-              if (!isNaN(idx)) handleLoadPreset(PRESETS[idx]);
+              const id = parseInt(e.target.value, 10);
+              const target = privateGames.find((g) => g.id === id);
+              if (target) loadGameIntoForm(target);
             }}
-            defaultValue=""
-            style={{ width: 'auto', padding: '6px 12px', fontSize: '0.8rem' }}
+            style={{
+              flex: 1,
+              background: '#0d1527',
+              borderColor: 'rgba(51, 65, 85, 0.8)',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              padding: '8px 12px'
+            }}
           >
-            <option value="" disabled>Load Preset...</option>
-            {PRESETS.map((p, idx) => (
-              <option key={p.name} value={idx}>{p.name}</option>
-            ))}
+            {privateGames.map((g) => {
+              const hitText = g.latest_prediction ? ` [${g.latest_prediction.prediction_label}: ${(g.latest_prediction.hit_probability * 100).toFixed(0)}%]` : ' [Unanalyzed]';
+              return (
+                <option key={g.id} value={g.id}>
+                  {g.name} — {g.primary_genre} ({g.price === 0 ? 'Free' : `$${g.price}`}){hitText}
+                </option>
+              );
+            })}
           </select>
         </div>
       </div>
@@ -331,7 +481,7 @@ export default function PredictionStudio({
         </div>
       )}
 
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.4rem' }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.35rem' }}>
         {/* Game Title */}
         <div>
           <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--on-surface-variant)', display: 'block', marginBottom: '6px' }}>
@@ -362,14 +512,13 @@ export default function PredictionStudio({
           />
         </div>
 
-        {/* Section 2: Genres & Primary Genre Select Box */}
+        {/* Genres & Primary Genre Select Box */}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
             <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--on-surface-variant)' }}>
               Select Genres ({formData.genres.length} active)
             </label>
 
-            {/* Primary Genre Select Box placed directly near the select genres area */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '0.78rem', color: 'var(--outline)', fontWeight: 600 }}>
                 Primary Genre:
@@ -414,7 +563,7 @@ export default function PredictionStudio({
           </div>
         </div>
 
-        {/* Section 3: Categories Selection Chips */}
+        {/* Categories Selection Chips */}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
             <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--on-surface-variant)' }}>
@@ -442,7 +591,7 @@ export default function PredictionStudio({
           </div>
         </div>
 
-        {/* Section 4: SteamSpy Tags with Autocomplete & Custom Addition */}
+        {/* SteamSpy Tags */}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
             <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--on-surface-variant)' }}>
@@ -453,7 +602,6 @@ export default function PredictionStudio({
             </span>
           </div>
 
-          {/* Active Tags */}
           {formData.steamspy_tags.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
               {formData.steamspy_tags.map((t) => (
@@ -483,7 +631,6 @@ export default function PredictionStudio({
             </div>
           )}
 
-          {/* Tag Quick Select & Add */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
             {POPULAR_TAGS.filter((t) => !formData.steamspy_tags.includes(t)).slice(0, 12).map((t) => (
               <button
@@ -518,7 +665,7 @@ export default function PredictionStudio({
           </div>
         </div>
 
-        {/* Section 5: Developer, Publisher */}
+        {/* Developer, Publisher */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <div>
             <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--on-surface-variant)', display: 'block', marginBottom: '6px' }}>
@@ -633,7 +780,7 @@ export default function PredictionStudio({
           </div>
         </div>
 
-        {/* Predict Action Button (Changed to just 'Predict') */}
+        {/* Predict Action Button */}
         <button
           type="submit"
           disabled={loading || (!descriptionAnalyzerActive && !hitAnalyzerActive)}
@@ -650,7 +797,7 @@ export default function PredictionStudio({
                   animation: 'spin 1s linear infinite'
                 }}
               />
-              <span>Forecasting...</span>
+              <span>Persisting & Forecasting...</span>
             </>
           ) : (
             <>

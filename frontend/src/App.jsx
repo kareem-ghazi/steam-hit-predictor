@@ -1,21 +1,46 @@
 import React, { useState, useEffect } from 'react';
 import {
   Gamepad2, Database, Sparkles, Activity, ShieldCheck, AlertCircle,
-  Home, Compass, Layers, Github
+  Home, Compass, Layers, Github, LogIn, LogOut, User
 } from 'lucide-react';
 import LandingPage from './components/LandingPage';
 import PredictionStudio from './components/PredictionStudio';
 import DescriptionAnalyzerPane from './components/DescriptionAnalyzerPane';
 import HitAnalyzerPane from './components/HitAnalyzerPane';
 import DatasetExplorer from './components/DatasetExplorer';
+import LoginPage from './components/LoginPage';
 
 const API_BASE = 'http://127.0.0.1:8000';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'studio' | 'explorer'
+  const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'studio' | 'explorer' | 'login'
   const [predictionResult, setPredictionResult] = useState(null);
   const [loadingPrediction, setLoadingPrediction] = useState(false);
   const [selectedGameForStudio, setSelectedGameForStudio] = useState(null);
+
+  // User Auth State
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    try {
+      const savedUser = localStorage.getItem('steam_hit_user');
+      if (savedUser) {
+        setUser(JSON.parse(savedUser));
+      }
+    } catch (e) {
+      console.warn('Auth state read note:', e);
+    }
+  }, []);
+
+  const handleLoginSuccess = (userObj) => {
+    setUser(userObj);
+    setActiveTab('studio'); // Redirect to studio upon login
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('steam_hit_user');
+    setUser(null);
+  };
 
   // Dual-Pane Toggles in Developer Studio
   const [descriptionAnalyzerActive, setDescriptionAnalyzerActive] = useState(true);
@@ -142,8 +167,9 @@ export default function App() {
             </button>
           </div>
 
-          {/* Minimal Engine Status Badge ("Online" or "Offline") */}
-          <div style={{ display: 'flex', alignItems: 'center' }}>
+          {/* User Auth & Engine Status */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            {/* Minimal Engine Status Badge ("Online" or "Offline") */}
             <span
               className={`badge-pill ${backendStatus === 'connected' ? 'badge-overwhelmingly-positive' : 'badge-negative'}`}
               style={{ padding: '4px 12px', fontSize: '0.75rem' }}
@@ -156,6 +182,39 @@ export default function App() {
               />
               <span>{backendStatus === 'connected' ? 'Online' : 'Offline'}</span>
             </span>
+
+            {/* Auth Button or User Badge */}
+            {user ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--surface-container-high)', padding: '3px 10px 3px 5px', borderRadius: 'var(--radius-full)', border: '1px solid rgba(102, 192, 244, 0.3)' }}>
+                  <img
+                    src={user.avatarUrl}
+                    alt={user.displayName}
+                    style={{ width: '22px', height: '22px', borderRadius: '50%' }}
+                  />
+                  <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#fff' }}>
+                    {user.displayName}
+                  </span>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="btn-secondary"
+                  style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+                  title="Sign Out"
+                >
+                  <LogOut size={13} />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setActiveTab('login')}
+                className="btn-secondary"
+                style={{ padding: '5px 12px', fontSize: '0.78rem' }}
+              >
+                <LogIn size={13} />
+                <span>Sign In</span>
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -169,11 +228,19 @@ export default function App() {
           />
         )}
 
+        {activeTab === 'login' && (
+          <LoginPage
+            onLogin={handleLoginSuccess}
+            onCancel={() => setActiveTab('studio')}
+          />
+        )}
+
         {activeTab === 'studio' && (
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.25fr) minmax(0, 0.95fr)', gap: '1.75rem', alignItems: 'start' }}>
             {/* Left Column: Developer Studio Form */}
             <PredictionStudio
               initialGame={selectedGameForStudio}
+              currentUser={user}
               onPredictionComplete={(result) => {
                 setPredictionResult(result);
               }}
@@ -256,7 +323,7 @@ export default function App() {
               <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.78rem', color: 'var(--outline)' }}>
                 <li>• Autonomous Pitch Narrative Sentiment Engine</li>
                 <li>• Commercial Hit vs Underperformer Classification</li>
-                <li>• Projected Community Reception Tiers</li>
+                <li>• SQLite Private Projects Persistence</li>
                 <li>• Nearest Neighbor Historical Comparables Engine</li>
               </ul>
             </div>
@@ -297,7 +364,7 @@ export default function App() {
             <div className="font-mono" style={{ display: 'flex', gap: '1rem' }}>
               <span>Engine Status: {backendStatus === 'connected' ? 'ONLINE (0.1096 Logloss)' : 'OFFLINE'}</span>
               <span>•</span>
-              <span>FastAPI & Vite</span>
+              <span>FastAPI & SQLite & Vite</span>
             </div>
           </div>
         </div>
